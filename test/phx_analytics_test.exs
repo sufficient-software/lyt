@@ -2,6 +2,10 @@ defmodule PhxAnalyticsTest do
   use PhxAnalytics.Test.Case
   doctest PhxAnalytics
 
+  setup_all do
+    PhxAnalytics.attach()
+  end
+
   describe inspect(&PhxAnalytics.create_session/1) do
     test "create a new session" do
       session =
@@ -156,24 +160,66 @@ defmodule PhxAnalyticsTest do
   end
 
   describe "telemetry handler" do
-    setup do
-      PhxAnalytics.attach()
-    end
-
-    test "telemetry handler is registered" do
+    test "mount handler" do
       session =
         PhxAnalytics.create_session(%{
           hostname: "http://example.com",
           entry: "/"
         })
 
-      :telemetry.execute([:phoenix, :live_view, :mount, :end], %{}, %{
-        uri: "http://example.com",
-        session: %{"phx_analytics_session_id" => session.id}
-      })
+      :telemetry.execute(
+        [:phoenix, :live_view, :mount, :stop],
+        %{},
+        %{
+          uri: "http://example.com",
+          session: %{"phx_analytics_session_id" => session.id}
+        }
+      )
 
-      [event] = PhxAnalytics.Repo.get(PhxAnalytics.Event)
-      assert event.session_id == session.id
+      events = PhxAnalytics.Repo.all(PhxAnalytics.Event)
+      assert length(events) == 1
+      assert events |> hd |> Map.get(:session_id) == session.id
+    end
+
+    test "handle_params handler" do
+      session =
+        PhxAnalytics.create_session(%{
+          hostname: "http://example.com",
+          entry: "/"
+        })
+
+      mod =
+        define_module_by_binary("""
+        defmodule TestModule3 do
+          use PhxAnalytics
+
+          @analytics true
+          def handle_event("testing", _params, socket) do
+            {:noreply, socket}
+          end
+
+
+        end
+        """)
+
+      Process.put(:phx_analytics_session_id, session.id)
+      Process.put(:phx_analytics_uri, URI.parse("http://example.com"))
+
+      :telemetry.execute(
+        [:phoenix, :live_view, :handle_event, :stop],
+        %{},
+        %{
+          uri: "http://example.com",
+          event: "testing",
+          socket: %{view: mod},
+          params: %{},
+          session: %{"phx_analytics_session_id" => session.id}
+        }
+      )
+
+      events = PhxAnalytics.Repo.all(PhxAnalytics.Event)
+      assert length(events) == 1
+      assert events |> hd |> Map.get(:session_id) == session.id
     end
   end
 end

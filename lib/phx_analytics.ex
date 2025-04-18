@@ -135,7 +135,7 @@ defmodule PhxAnalytics do
     |> create_event()
   end
 
-  def handle_event([:phoenix, :live_view, :handle_params, _], _measurement, metadata, _config) do
+  def handle_event([:phoenix, :live_view, :handle_event, _], _measurement, metadata, _config) do
     tracked_events = metadata.socket.view.phx_analytics_tracked_event_handlers()
 
     is_tracked =

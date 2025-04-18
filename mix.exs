@@ -23,6 +23,7 @@ defmodule PhxAnalytics.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
+      {:telemetry, "~> 1.3.0"},
       {:ua_inspector, "~> 3.0"},
       {:jason, "~> 1.0"},
       {:ecto, "~> 3.12"},
