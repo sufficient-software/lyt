@@ -5,6 +5,18 @@ defmodule PhxAnalytics do
 
   alias PhxAnalytics.{Session, Event, Repo}
 
+  def attach(_opts \\ []) do
+    :telemetry.attach_many(
+      <<"phx_analytics">>,
+      [
+        [:phoenix, :live_view, :mount, :stop],
+        [:phoenix, :live_view, :handle_event, :stop]
+      ],
+      &__MODULE__.handle_event/4,
+      nil
+    )
+  end
+
   def create_session(attrs \\ %{}) do
     %Session{}
     |> Session.changeset(attrs)
@@ -100,5 +112,61 @@ defmodule PhxAnalytics do
 
     Module.put_attribute(env.module, :_phx_analytics_tracked_functions, tracked_info)
     Module.delete_attribute(env.module, :analytics)
+  end
+
+  def handle_event([:phoenix, :live_view, :mount, _], _measurement, metadata, _config) do
+    uri =
+      metadata
+      |> get_in([:uri])
+      |> URI.parse()
+
+    session_id = get_in(metadata, [:session, "phx_analytics_session_id"])
+
+    Process.put(:phx_analytics_uri, uri)
+    Process.put(:phx_analytics_session_id, session_id)
+
+    %{
+      session_id: session_id,
+      name: "Live View",
+      hostname: uri.host,
+      path: uri.path,
+      query: uri.query
+    }
+    |> create_event()
+  end
+
+  def handle_event([:phoenix, :live_view, :handle_params, _], _measurement, metadata, _config) do
+    tracked_events = metadata.socket.view.phx_analytics_tracked_event_handlers()
+
+    is_tracked =
+      !is_nil(
+        Enum.find(tracked_events, fn
+          {:handle_event, [event]} ->
+            event == metadata.event
+
+          _ ->
+            false
+        end)
+      )
+
+    if(is_tracked) do
+      session_id = Process.get(:phx_analytics_session_id)
+      uri = Process.get(:phx_analytics_uri)
+
+      %{
+        session_id: session_id,
+        name: "Live View",
+        hostname: uri.host,
+        # TODO: filter params for sensitive data
+        metadata: %{"params" => metadata.params},
+        path: uri.path,
+        query: uri.query
+      }
+      |> create_event()
+    end
+  end
+
+  def handle_event(_, _, _, _) do
+    # Skip unknown event handlers
   end
 end
