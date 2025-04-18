@@ -59,4 +59,46 @@ defmodule PhxAnalytics do
   def generate_session_id() do
     :crypto.strong_rand_bytes(16) |> Base.encode16(case: :lower)
   end
+
+  defmacro __using__(_opts) do
+    quote do
+      Module.register_attribute(__MODULE__, :_phx_analytics_tracked_functions, accumulate: true)
+      @before_compile PhxAnalytics
+      @on_definition {PhxAnalytics, :__on_definition__}
+      require PhxAnalytics
+    end
+  end
+
+  defmacro __before_compile__(env) do
+    tracked_event_handlers = Module.get_attribute(env.module, :_phx_analytics_tracked_functions)
+
+    quote do
+      def phx_analytics_tracked_event_handlers do
+        unquote(Macro.escape(tracked_event_handlers))
+      end
+    end
+  end
+
+  def __on_definition__(env, kind, name, args, _guards, _body) do
+    if Module.get_attribute(env.module, :analytics) do
+      track_handler(env, kind, name, args)
+    end
+  end
+
+  defp track_handler(env, kind, name, args) when kind in [:def, :defp] do
+    tracked_info =
+      case {name, args} do
+        {:handle_event, [{:<<>>, _, [event_name]}, _params, _socket]} ->
+          {name, [event_name]}
+
+        {:handle_event, [event_name, _params, _socket]} when is_binary(event_name) ->
+          {name, [event_name]}
+
+        _ ->
+          {name, []}
+      end
+
+    Module.put_attribute(env.module, :_phx_analytics_tracked_functions, tracked_info)
+    Module.delete_attribute(env.module, :analytics)
+  end
 end

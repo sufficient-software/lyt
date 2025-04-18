@@ -24,3 +24,5 @@ phx_analytics-*.tar
 
 # Temporary files, for example, from tests.
 /tmp/
+
+/priv/repo/sqlite3/*.db*

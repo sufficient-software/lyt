@@ -79,4 +79,79 @@ defmodule PhxAnalyticsTest do
       assert event.path == "/home"
     end
   end
+
+  # Helper function to define a module that can be used for testing
+  def define_module_by_binary(binary) do
+    Code.eval_string(binary)
+    |> elem(0)
+    |> elem(1)
+  end
+
+  describe "@analytics macro" do
+    test "@analytics true flags a handle_event to get flagged for tracking" do
+      mod =
+        define_module_by_binary("""
+        defmodule Test do
+          use PhxAnalytics
+
+          @analytics true
+          def handle_event("testing", _params, socket) do
+            {:noreply, socket}
+          end
+        end
+        """)
+
+      assert mod.phx_analytics_tracked_event_handlers() == [
+               handle_event: ["testing"]
+             ]
+    end
+
+    test "no @analytics means no handle_event gets flagged for tracking" do
+      mod =
+        define_module_by_binary("""
+        defmodule TestModule2 do
+          use PhxAnalytics
+
+          def handle_event("testing", _params, socket) do
+            {:noreply, socket}
+          end
+        end
+        """)
+
+      assert mod.phx_analytics_tracked_event_handlers() == []
+    end
+
+    test "@analytics can handle interspersed tracking" do
+      mod =
+        define_module_by_binary("""
+        defmodule TestModule do
+          use PhxAnalytics
+
+          @analytics true
+          def handle_event("testing", _params, socket) do
+            {:noreply, socket}
+          end
+
+          def handle_event("testing2", _params, socket) do
+            {:noreply, socket}
+          end
+
+          @analytics false
+          def handle_event("testing3", _params, socket) do
+            {:noreply, socket}
+          end
+
+          @analytics true
+          def handle_event("testing4", _params, socket) do
+            {:noreply, socket}
+          end
+        end
+        """)
+
+      assert mod.phx_analytics_tracked_event_handlers() == [
+               {:handle_event, ["testing4"]},
+               {:handle_event, ["testing"]}
+             ]
+    end
+  end
 end
