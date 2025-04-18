@@ -27,6 +27,7 @@ defmodule PhxAnalytics.MixProject do
       {:jason, "~> 1.0"},
       {:ecto, "~> 3.12"},
       {:ecto_sql, "~> 3.12"},
+      {:plug, "~> 1.17"},
       {:ecto_sqlite3, ">= 0.0.0", optional: true},
       {:postgrex, ">= 0.0.0", optional: true},
       {:myxql, ">= 0.0.0", optional: true},

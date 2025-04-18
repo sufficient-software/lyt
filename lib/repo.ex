@@ -7,6 +7,14 @@ defmodule PhxAnalytics.Repo do
     delegate(:all, [queryable], opts)
   end
 
+  def one(queryable, opts \\ []) do
+    delegate(:one, [queryable], opts)
+  end
+
+  def get(queryable, id, opts \\ []) do
+    delegate(:get, [queryable, id], opts)
+  end
+
   defp delegate(action, arguments, opts) do
     repo = Keyword.get(opts, :repo, repo())
     # TODO: handle deafult arguments if needed

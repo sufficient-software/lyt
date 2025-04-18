@@ -61,13 +61,9 @@ defmodule PhxAnalytics.Session do
     current_id = get_field(changeset, :id)
 
     if is_nil(current_id) || current_id == "" do
-      put_change(changeset, :id, generate_session_id())
+      put_change(changeset, :id, PhxAnalytics.generate_session_id())
     else
       changeset
     end
-  end
-
-  defp generate_session_id do
-    :crypto.strong_rand_bytes(16) |> Base.encode16(case: :lower)
   end
 end
