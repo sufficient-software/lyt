@@ -154,4 +154,26 @@ defmodule PhxAnalyticsTest do
              ]
     end
   end
+
+  describe "telemetry handler" do
+    setup do
+      PhxAnalytics.attach()
+    end
+
+    test "telemetry handler is registered" do
+      session =
+        PhxAnalytics.create_session(%{
+          hostname: "http://example.com",
+          entry: "/"
+        })
+
+      :telemetry.execute([:phoenix, :live_view, :mount, :end], %{}, %{
+        uri: "http://example.com",
+        session: %{"phx_analytics_session_id" => session.id}
+      })
+
+      [event] = PhxAnalytics.Repo.get(PhxAnalytics.Event)
+      assert event.session_id == session.id
+    end
+  end
 end
