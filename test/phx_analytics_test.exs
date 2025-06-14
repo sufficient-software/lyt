@@ -84,17 +84,10 @@ defmodule PhxAnalyticsTest do
     end
   end
 
-  # Helper function to define a module that can be used for testing
-  def define_module_by_binary(binary) do
-    Code.eval_string(binary)
-    |> elem(0)
-    |> elem(1)
-  end
-
   describe "@analytics macro" do
     test "@analytics true flags a handle_event to get flagged for tracking" do
-      mod =
-        define_module_by_binary("""
+      with_binary_module(
+        """
         defmodule Test do
           use PhxAnalytics
 
@@ -103,32 +96,36 @@ defmodule PhxAnalyticsTest do
             {:noreply, socket}
           end
         end
-        """)
-
-      assert mod.phx_analytics_tracked_event_handlers() == [
-               handle_event: ["testing"]
-             ]
+        """,
+        fn mod ->
+          assert mod.phx_analytics_tracked_event_handlers() == [
+                   handle_event: ["testing"]
+                 ]
+        end
+      )
     end
 
     test "no @analytics means no handle_event gets flagged for tracking" do
-      mod =
-        define_module_by_binary("""
-        defmodule TestModule2 do
+      with_binary_module(
+        """
+        defmodule Test do
           use PhxAnalytics
 
           def handle_event("testing", _params, socket) do
             {:noreply, socket}
           end
         end
-        """)
-
-      assert mod.phx_analytics_tracked_event_handlers() == []
+        """,
+        fn mod ->
+          assert mod.phx_analytics_tracked_event_handlers() == []
+        end
+      )
     end
 
     test "@analytics can handle interspersed tracking" do
-      mod =
-        define_module_by_binary("""
-        defmodule TestModule do
+      with_binary_module(
+        """
+        defmodule Test do
           use PhxAnalytics
 
           @analytics true
@@ -150,12 +147,14 @@ defmodule PhxAnalyticsTest do
             {:noreply, socket}
           end
         end
-        """)
-
-      assert mod.phx_analytics_tracked_event_handlers() == [
-               {:handle_event, ["testing4"]},
-               {:handle_event, ["testing"]}
-             ]
+        """,
+        fn mod ->
+          assert mod.phx_analytics_tracked_event_handlers() == [
+                   {:handle_event, ["testing4"]},
+                   {:handle_event, ["testing"]}
+                 ]
+        end
+      )
     end
   end
 
@@ -188,9 +187,9 @@ defmodule PhxAnalyticsTest do
           entry: "/"
         })
 
-      mod =
-        define_module_by_binary("""
-        defmodule TestModule3 do
+      with_binary_module(
+        """
+        defmodule Test do
           use PhxAnalytics
 
           @analytics true
@@ -200,26 +199,28 @@ defmodule PhxAnalyticsTest do
 
 
         end
-        """)
+        """,
+        fn mod ->
+          Process.put(:phx_analytics_session_id, session.id)
+          Process.put(:phx_analytics_uri, URI.parse("http://example.com"))
 
-      Process.put(:phx_analytics_session_id, session.id)
-      Process.put(:phx_analytics_uri, URI.parse("http://example.com"))
+          :telemetry.execute(
+            [:phoenix, :live_view, :handle_event, :stop],
+            %{},
+            %{
+              uri: "http://example.com",
+              event: "testing",
+              socket: %{view: mod},
+              params: %{},
+              session: %{"phx_analytics_session_id" => session.id}
+            }
+          )
 
-      :telemetry.execute(
-        [:phoenix, :live_view, :handle_event, :stop],
-        %{},
-        %{
-          uri: "http://example.com",
-          event: "testing",
-          socket: %{view: mod},
-          params: %{},
-          session: %{"phx_analytics_session_id" => session.id}
-        }
+          events = PhxAnalytics.Repo.all(PhxAnalytics.Event)
+          assert length(events) == 1
+          assert events |> hd |> Map.get(:session_id) == session.id
+        end
       )
-
-      events = PhxAnalytics.Repo.all(PhxAnalytics.Event)
-      assert length(events) == 1
-      assert events |> hd |> Map.get(:session_id) == session.id
     end
   end
 end

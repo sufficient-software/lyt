@@ -69,7 +69,7 @@ defmodule PhxAnalytics do
   end
 
   def generate_session_id() do
-    :crypto.strong_rand_bytes(16) |> Base.encode16(case: :lower)
+    :crypto.strong_rand_bytes(32) |> Base.encode16(case: :lower)
   end
 
   defmacro __using__(_opts) do
