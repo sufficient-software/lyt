@@ -10,6 +10,7 @@ defmodule PhxAnalytics do
       <<"phx_analytics">>,
       [
         [:phoenix, :live_view, :mount, :stop],
+        [:phoenix, :live_view, :handle_params, :stop],
         [:phoenix, :live_view, :handle_event, :stop]
       ],
       &__MODULE__.handle_event/4,
@@ -120,45 +121,16 @@ defmodule PhxAnalytics do
       |> get_in([:uri])
       |> URI.parse()
 
-    session_id = get_in(metadata, [:session, "phx_analytics_session_id"])
+    session_id = get_in(metadata, [:session, session_cookie_name()])
 
     Process.put(:phx_analytics_uri, uri)
     Process.put(:phx_analytics_session_id, session_id)
 
-    %{
-      session_id: session_id,
-      name: "Live View",
-      hostname: uri.host,
-      path: uri.path,
-      query: uri.query
-    }
-    |> create_event()
-  end
-
-  def handle_event([:phoenix, :live_view, :handle_event, _], _measurement, metadata, _config) do
-    tracked_events = metadata.socket.view.phx_analytics_tracked_event_handlers()
-
-    is_tracked =
-      !is_nil(
-        Enum.find(tracked_events, fn
-          {:handle_event, [event]} ->
-            event == metadata.event
-
-          _ ->
-            false
-        end)
-      )
-
-    if(is_tracked) do
-      session_id = Process.get(:phx_analytics_session_id)
-      uri = Process.get(:phx_analytics_uri)
-
+    unless path_excluded?(uri.path) do
       %{
         session_id: session_id,
         name: "Live View",
         hostname: uri.host,
-        # TODO: filter params for sensitive data
-        metadata: %{"params" => metadata.params},
         path: uri.path,
         query: uri.query
       }
@@ -166,7 +138,82 @@ defmodule PhxAnalytics do
     end
   end
 
-  def handle_event(_, _, _, _) do
+  def handle_event([:phoenix, :live_view, :handle_params, _], _measurement, metadata, _config) do
+    uri =
+      metadata
+      |> get_in([:uri])
+      |> URI.parse()
+
+    previous_uri = Process.get(:phx_analytics_uri)
+    session_id = Process.get(:phx_analytics_session_id)
+
+    # Update stored URI for future comparisons
+    Process.put(:phx_analytics_uri, uri)
+
+    # Only create event if path changed (not on initial mount, which already creates an event)
+    path_changed = previous_uri && previous_uri.path != uri.path
+
+    if path_changed && !path_excluded?(uri.path) do
+      %{
+        session_id: session_id,
+        name: "Live View",
+        hostname: uri.host,
+        path: uri.path,
+        query: uri.query
+      }
+      |> create_event()
+    end
+  end
+
+  def handle_event([:phoenix, :live_view, :handle_event, _], _measurement, metadata, _config) do
+    uri = Process.get(:phx_analytics_uri)
+
+    if uri && !path_excluded?(uri.path) do
+      tracked_events = metadata.socket.view.phx_analytics_tracked_event_handlers()
+
+      is_tracked =
+        !is_nil(
+          Enum.find(tracked_events, fn
+            {:handle_event, [event]} ->
+              event == metadata.event
+
+            _ ->
+              false
+          end)
+        )
+
+      if is_tracked do
+        session_id = Process.get(:phx_analytics_session_id)
+
+        %{
+          session_id: session_id,
+          name: "Live View",
+          hostname: uri.host,
+          # TODO: filter params for sensitive data
+          metadata: %{"params" => metadata.params},
+          path: uri.path,
+          query: uri.query
+        }
+        |> create_event()
+      end
+    end
+  end
+
+  def handle_event(_event, _, _, _) do
     # Skip unknown event handlers
+  end
+
+  defp path_excluded?(nil), do: false
+
+  defp path_excluded?(path) do
+    excluded_paths = Application.get_env(:phx_analytics, :excluded_paths, [])
+
+    Enum.any?(excluded_paths, fn excluded ->
+      String.starts_with?(path, excluded)
+    end)
+  end
+
+  defp session_cookie_name do
+    Application.get_env(:phx_analytics, :session_cookie_name, "phx_analytics_session")
   end
 end
