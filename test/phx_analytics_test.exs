@@ -100,7 +100,7 @@ defmodule PhxAnalyticsTest do
         """,
         fn mod ->
           assert mod.phx_analytics_tracked_event_handlers() == [
-                   handle_event: ["testing"]
+                   {:handle_event, "testing", %{}}
                  ]
         end
       )
@@ -151,8 +151,8 @@ defmodule PhxAnalyticsTest do
         """,
         fn mod ->
           assert mod.phx_analytics_tracked_event_handlers() == [
-                   {:handle_event, ["testing4"]},
-                   {:handle_event, ["testing"]}
+                   {:handle_event, "testing4", %{}},
+                   {:handle_event, "testing", %{}}
                  ]
         end
       )

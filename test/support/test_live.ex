@@ -29,7 +29,19 @@ defmodule PhxAnalytics.Test.TestLive do
     {:noreply, assign(socket, :last_params, params)}
   end
 
-  def event_metadata(params), do: %{custom: params["value"]}
+  @impl true
+  @analytics name: "Custom Event Name"
+  def handle_event("custom_name_event", _params, socket) do
+    {:noreply, socket}
+  end
+
+  @impl true
+  @analytics name: "Full Custom", metadata: %{"source" => "test", "category" => "button"}
+  def handle_event("full_custom_event", _params, socket) do
+    {:noreply, socket}
+  end
+
+  def event_metadata(params), do: %{"custom" => params["value"]}
 
   @impl true
   def render(assigns) do

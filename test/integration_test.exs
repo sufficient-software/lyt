@@ -84,11 +84,11 @@ defmodule PhxAnalytics.IntegrationTest do
       # Should have created an event for the tracked handle_event
       assert event_count() == initial_event_count + 1
 
-      # The event is created with name "Live View" and metadata containing params
+      # The event name defaults to the event handler name
       events = all_events()
-      tracked_event = Enum.find(events, &(&1.metadata != nil && &1.metadata["params"] != nil))
+      tracked_event = Enum.find(events, &(&1.name == "increment"))
       assert tracked_event != nil
-      assert tracked_event.name == "Live View"
+      assert tracked_event.metadata["params"] != nil
     end
 
     test "does not track unannotated handle_event", %{conn: conn} do
@@ -102,23 +102,49 @@ defmodule PhxAnalytics.IntegrationTest do
       assert event_count() == initial_event_count
     end
 
-    test "tracks handle_event with custom metadata", %{conn: conn} do
+    test "tracks handle_event with custom metadata function", %{conn: conn} do
       {:ok, view, _html} = live(conn, "/live-test")
 
       # Click the tracked with metadata button
       render_click(view, "tracked_with_metadata", %{"value" => "custom_value"})
 
-      # Find event with params in metadata
+      # Find event with custom metadata merged in
       events = all_events()
 
       metadata_event =
         Enum.find(events, fn e ->
-          e.metadata != nil && e.metadata["params"] != nil &&
-            e.metadata["params"]["value"] == "custom_value"
+          e.metadata != nil && e.metadata["custom"] == "custom_value"
         end)
 
       assert metadata_event != nil
-      assert metadata_event.name == "Live View"
+      # Name defaults to event name when not specified
+      assert metadata_event.name == "tracked_with_metadata"
+      # Params are also included
+      assert metadata_event.metadata["params"]["value"] == "custom_value"
+    end
+
+    test "tracks handle_event with custom name", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/live-test")
+
+      render_click(view, "custom_name_event")
+
+      events = all_events()
+      custom_event = Enum.find(events, &(&1.name == "Custom Event Name"))
+      assert custom_event != nil
+    end
+
+    test "tracks handle_event with custom name and static metadata", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/live-test")
+
+      render_click(view, "full_custom_event")
+
+      events = all_events()
+      custom_event = Enum.find(events, &(&1.name == "Full Custom"))
+      assert custom_event != nil
+      assert custom_event.metadata["source"] == "test"
+      assert custom_event.metadata["category"] == "button"
+      # Params are still included
+      assert custom_event.metadata["params"] != nil
     end
   end
 

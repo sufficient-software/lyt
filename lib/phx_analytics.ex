@@ -134,22 +134,32 @@ defmodule PhxAnalytics do
   end
 
   def __on_definition__(env, kind, name, args, _guards, _body) do
-    if Module.get_attribute(env.module, :analytics) do
-      track_handler(env, kind, name, args)
+    analytics_opts = Module.get_attribute(env.module, :analytics)
+
+    if analytics_opts do
+      track_handler(env, kind, name, args, analytics_opts)
     end
   end
 
-  defp track_handler(env, kind, name, args) when kind in [:def, :defp] do
+  defp track_handler(env, kind, name, args, analytics_opts) when kind in [:def, :defp] do
+    # Parse analytics options
+    opts =
+      case analytics_opts do
+        true -> %{}
+        opts when is_list(opts) -> Map.new(opts)
+        _ -> %{}
+      end
+
     tracked_info =
       case {name, args} do
         {:handle_event, [{:<<>>, _, [event_name]}, _params, _socket]} ->
-          {name, [event_name]}
+          {:handle_event, event_name, opts}
 
         {:handle_event, [event_name, _params, _socket]} when is_binary(event_name) ->
-          {name, [event_name]}
+          {:handle_event, event_name, opts}
 
         _ ->
-          {name, []}
+          {name, nil, opts}
       end
 
     Module.put_attribute(env.module, :_phx_analytics_tracked_functions, tracked_info)
@@ -221,21 +231,39 @@ defmodule PhxAnalytics do
       view = metadata.socket.view
       event_name = metadata.event
 
-      is_tracked = event_tracked?(view, event_name)
+      case event_tracked?(view, event_name) do
+        {true, opts} ->
+          session_id = Process.get(:phx_analytics_session_id)
 
-      if is_tracked do
-        session_id = Process.get(:phx_analytics_session_id)
+          # Use custom name if provided, otherwise use the event name
+          name = Map.get(opts, :name, event_name)
 
-        %{
-          session_id: session_id,
-          name: "Live View",
-          hostname: uri.host,
-          # TODO: filter params for sensitive data
-          metadata: %{"params" => metadata.params},
-          path: uri.path,
-          query: uri.query
-        }
-        |> create_event()
+          # Build metadata - start with params, merge custom metadata if provided
+          event_metadata =
+            case Map.get(opts, :metadata) do
+              nil ->
+                %{"params" => metadata.params}
+
+              custom when is_map(custom) ->
+                Map.merge(%{"params" => metadata.params}, custom)
+
+              custom_fn when is_function(custom_fn, 1) ->
+                custom = custom_fn.(metadata.params)
+                Map.merge(%{"params" => metadata.params}, custom)
+            end
+
+          %{
+            session_id: session_id,
+            name: name,
+            hostname: uri.host,
+            metadata: event_metadata,
+            path: uri.path,
+            query: uri.query
+          }
+          |> create_event()
+
+        false ->
+          :ok
       end
     end
   end
@@ -244,9 +272,11 @@ defmodule PhxAnalytics do
     # Skip unknown event handlers
   end
 
+  # Returns {true, opts} if tracked, false otherwise
+  # opts contains any overrides like :name or :metadata
   defp event_tracked?(view, event_name) do
     # Get tracking options from the module
-    opts =
+    module_opts =
       if function_exported?(view, :phx_analytics_tracking_opts, 0) do
         view.phx_analytics_tracking_opts()
       else
@@ -260,25 +290,28 @@ defmodule PhxAnalytics do
         []
       end
 
-    # Check if explicitly tracked via @analytics decorator
-    explicitly_tracked =
-      Enum.any?(tracked_handlers, fn
-        {:handle_event, [event]} -> event == event_name
-        _ -> false
+    # Check if explicitly tracked via @analytics decorator and get its options
+    explicit_tracking =
+      Enum.find_value(tracked_handlers, fn
+        {:handle_event, event, opts} when event == event_name -> {:found, opts}
+        # Legacy format support
+        {:handle_event, [event]} when event == event_name -> {:found, %{}}
+        _ -> nil
       end)
 
     cond do
-      # If explicitly tracked with @analytics, always track
-      explicitly_tracked ->
-        true
+      # If explicitly tracked with @analytics, return true with options
+      explicit_tracking != nil ->
+        {:found, opts} = explicit_tracking
+        {true, opts}
 
       # If include list is provided, only track events in the list
-      opts.include != [] ->
-        event_name in opts.include
+      module_opts.include != [] ->
+        if event_name in module_opts.include, do: {true, %{}}, else: false
 
       # If track_all is true, track unless excluded
-      opts.track_all ->
-        event_name not in opts.exclude
+      module_opts.track_all ->
+        if event_name not in module_opts.exclude, do: {true, %{}}, else: false
 
       # Default: not tracked
       true ->
