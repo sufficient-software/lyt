@@ -3,7 +3,8 @@ defmodule PhxAnalyticsTest do
   doctest PhxAnalytics
 
   setup_all do
-    PhxAnalytics.attach()
+    # Telemetry is already attached in test_helper.exs
+    :ok
   end
 
   describe inspect(&PhxAnalytics.create_session/1) do
