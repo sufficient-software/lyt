@@ -16,6 +16,7 @@ defmodule PhxAnalytics.Repo do
     * `Ecto.Adapters.Postgres` - PostgreSQL
     * `Ecto.Adapters.MyXQL` - MySQL
     * `Ecto.Adapters.SQLite3` - SQLite3
+    * `Ecto.Adapters.DuckDB` - DuckDB
 
   ## Adapter Detection
 
@@ -25,6 +26,7 @@ defmodule PhxAnalytics.Repo do
         :postgres -> # PostgreSQL-specific code
         :mysql -> # MySQL-specific code
         :sqlite3 -> # SQLite3-specific code
+        :duckdb -> # DuckDB-specific code
       end)
   """
   def insert!(struct_or_changeset, opts \\ []) do
@@ -57,7 +59,7 @@ defmodule PhxAnalytics.Repo do
   Execute a function with the detected database adapter.
 
   Calls the provided function with an atom representing the adapter:
-  `:postgres`, `:mysql`, or `:sqlite3`.
+  `:postgres`, `:mysql`, `:sqlite3`, or `:duckdb`.
 
   ## Examples
 
@@ -76,6 +78,7 @@ defmodule PhxAnalytics.Repo do
         Ecto.Adapters.Postgres -> :postgres
         Ecto.Adapters.MyXQL -> :mysql
         Ecto.Adapters.SQLite3 -> :sqlite3
+        Ecto.Adapters.DuckDB -> :duckdb
       end
 
     fun.(adapter)

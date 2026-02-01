@@ -41,6 +41,7 @@ defmodule PhxAnalytics.Migration do
     * PostgreSQL (`Ecto.Adapters.Postgres`)
     * MySQL (`Ecto.Adapters.MyXQL`)
     * SQLite3 (`Ecto.Adapters.SQLite3`)
+    * DuckDB (`Ecto.Adapters.DuckDB`)
 
   ## Versioning
 
@@ -107,6 +108,7 @@ defmodule PhxAnalytics.Migration do
       :postgres -> PhxAnalytics.Migration.Postgres
       :mysql -> PhxAnalytics.Migration.MySQL
       :sqlite3 -> PhxAnalytics.Migration.SQLite3
+      :duckdb -> PhxAnalytics.Migration.DuckDB
       adapter -> raise "Unknown adapter #{adapter}"
     end)
   end

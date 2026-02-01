@@ -16,7 +16,7 @@ parameters, and custom metadata.
 - **Session Management** - Automatic session creation with device/browser detection
 - **UTM Parameter Capture** - Automatically captures marketing attribution data
 - **Async Event Queuing** - High-performance batch inserts via GenServer
-- **Multi-Database Support** - Works with PostgreSQL, MySQL, and SQLite3
+- **Multi-Database Support** - Works with PostgreSQL, MySQL, SQLite3, and DuckDB
 - **Flexible Configuration** - Include/exclude events, custom callbacks, and more
 
 ## Installation
@@ -30,7 +30,8 @@ def deps do
     # Include your database adapter (one of the following):
     {:postgrex, ">= 0.0.0"},     # for PostgreSQL
     {:myxql, ">= 0.0.0"},        # for MySQL
-    {:ecto_sqlite3, ">= 0.0.0"}  # for SQLite3
+    {:ecto_sqlite3, ">= 0.0.0"}, # for SQLite3
+    {:ecto_duckdb, ">= 0.0.0"}   # for DuckDB
   ]
 end
 ```

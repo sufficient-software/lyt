@@ -42,6 +42,7 @@ defmodule PhxAnalytics.MixProject do
       {:ecto_sqlite3, ">= 0.0.0", optional: true},
       {:postgrex, ">= 0.0.0", optional: true},
       {:myxql, ">= 0.0.0", optional: true},
+      {:ecto_duckdb, ">= 0.0.0", optional: true},
       {:ex_doc, "~> 0.34", only: :dev, runtime: false},
       # Test dependencies for Phoenix/LiveView integration tests
       {:phoenix, "~> 1.7", only: :test},
