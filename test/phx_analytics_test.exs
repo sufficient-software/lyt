@@ -171,7 +171,7 @@ defmodule PhxAnalyticsTest do
         %{},
         %{
           uri: "http://example.com",
-          session: %{"phx_analytics_session_id" => session.id}
+          session: %{"phx_analytics_session" => session.id}
         }
       )
 
