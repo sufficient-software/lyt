@@ -171,7 +171,8 @@ defmodule PhxAnalyticsTest do
         %{},
         %{
           uri: "http://example.com",
-          session: %{"phx_analytics_session" => session.id}
+          session: %{"phx_analytics_session" => session.id},
+          socket: %{transport_pid: self()}
         }
       )
 

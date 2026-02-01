@@ -3,6 +3,10 @@ defmodule PhxAnalytics.Repo do
     delegate(:insert!, [struct_or_changeset], opts)
   end
 
+  def insert(struct_or_changeset, opts \\ []) do
+    delegate(:insert, [struct_or_changeset], opts)
+  end
+
   def all(queryable, opts \\ []) do
     delegate(:all, [queryable], opts)
   end

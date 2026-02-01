@@ -33,7 +33,11 @@ defmodule PhxAnalytics do
   def create_event(attrs) do
     %Event{}
     |> Event.changeset(attrs)
-    |> Repo.insert!()
+    |> Repo.insert()
+    |> case do
+      {:ok, event} -> event
+      {:error, _changeset} -> nil
+    end
   end
 
   def parse_user_agent(user_agent) do
@@ -126,7 +130,15 @@ defmodule PhxAnalytics do
     Process.put(:phx_analytics_uri, uri)
     Process.put(:phx_analytics_session_id, session_id)
 
-    unless path_excluded?(uri.path) do
+    # Only record on connected mount, not static render, to avoid duplicate events.
+    # Check socket.transport_pid - it's nil during static render, set during live mount.
+    connected? =
+      case metadata do
+        %{socket: %{transport_pid: pid}} when is_pid(pid) -> true
+        _ -> false
+      end
+
+    if connected? and not path_excluded?(uri.path) do
       %{
         session_id: session_id,
         name: "Live View",
