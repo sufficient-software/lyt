@@ -62,8 +62,14 @@ defmodule PhxAnalytics.MixProject do
       source_url: @source_url,
       extras: [
         "README.md",
+        "guides/installation.md",
         "CHANGELOG.md",
         "LICENSE"
+      ],
+      groups_for_extras: [
+        Guides: [
+          "guides/installation.md"
+        ]
       ],
       groups_for_modules: [
         Core: [
