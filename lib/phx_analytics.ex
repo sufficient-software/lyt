@@ -1,10 +1,101 @@
 defmodule PhxAnalytics do
   @moduledoc """
-  Documentation for `PhxAnalytics`.
+  Highly customizable analytics for Phoenix LiveView applications.
+
+  PhxAnalytics provides automatic tracking of page views and custom events in Phoenix
+  LiveView applications. It captures session data including browser information, UTM
+  parameters, and custom metadata.
+
+  ## Features
+
+    * Automatic LiveView mount and navigation tracking
+    * Custom event tracking with the `@analytics` decorator
+    * Session management with device/browser detection
+    * UTM parameter capture
+    * Async event queuing for performance
+    * Multi-database support (PostgreSQL, MySQL, SQLite3)
+
+  ## Quick Start
+
+  1. Add PhxAnalytics to your supervision tree:
+
+      ```elixir
+      # In your application.ex
+      children = [
+        MyApp.Repo,
+        PhxAnalytics.Telemetry,
+        # ... other children
+      ]
+      ```
+
+  2. Add the Plug to your router pipeline:
+
+      ```elixir
+      # In your router.ex
+      pipeline :browser do
+        plug :accepts, ["html"]
+        plug :fetch_session
+        plug PhxAnalytics.Plug
+        # ... other plugs
+      end
+      ```
+
+  3. Configure your repo:
+
+      ```elixir
+      # In config/config.exs
+      config :phx_analytics, :repo, MyApp.Repo
+      ```
+
+  4. Run migrations:
+
+      ```elixir
+      # In a migration file
+      def up do
+        PhxAnalytics.Migration.up()
+      end
+
+      def down do
+        PhxAnalytics.Migration.down()
+      end
+      ```
+
+  ## Tracking Custom Events
+
+  Use the `@analytics` decorator in your LiveView modules to track specific events:
+
+      defmodule MyAppWeb.DashboardLive do
+        use MyAppWeb, :live_view
+        use PhxAnalytics
+
+        @analytics true
+        def handle_event("submit_form", params, socket) do
+          # Your event handling code
+          {:noreply, socket}
+        end
+      end
+
+  You can also configure module-level tracking options:
+
+      use PhxAnalytics, track_all: true, exclude: ["ping", "heartbeat"]
+
+  See `__using__/1` for all available options.
   """
 
   alias PhxAnalytics.{Session, Event, Repo, EventQueue}
 
+  @doc """
+  Attach telemetry handlers manually.
+
+  This is called automatically when using `PhxAnalytics.Telemetry` in your
+  supervision tree. You only need to call this directly if you're not using
+  the Telemetry supervisor.
+
+  ## Example
+
+      PhxAnalytics.attach()
+
+  """
   def attach(_opts \\ []) do
     :telemetry.attach_many(
       <<"phx_analytics">>,
@@ -102,6 +193,32 @@ defmodule PhxAnalytics do
     ArgumentError -> map
   end
 
+  @doc """
+  Parse a user-agent string to extract browser and operating system information.
+
+  Returns a map with browser and OS details. Uses UAInspector for parsing.
+
+  ## Return Value
+
+  Returns a map with the following keys (when available):
+    * `:browser` - Browser name (e.g., "Chrome", "Firefox", "Safari")
+    * `:browser_version` - Browser version string
+    * `:operating_system` - OS name (e.g., "Mac", "Windows", "Linux")
+    * `:operating_system_version` - OS version string
+
+  For bots, only `:browser` is returned with the bot name.
+
+  ## Examples
+
+      # Full user agent parsing
+      PhxAnalytics.parse_user_agent("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)...")
+      # => %{browser: "Safari", browser_version: "...", operating_system: "Mac", ...}
+
+      # Bot detection
+      PhxAnalytics.parse_user_agent("Googlebot/2.1 (+http://www.google.com/bot.html)")
+      # => %{browser: "Googlebot"}
+
+  """
   def parse_user_agent(user_agent) do
     case UAInspector.parse(user_agent) do
       %UAInspector.Result{
@@ -125,6 +242,24 @@ defmodule PhxAnalytics do
     end
   end
 
+  @doc """
+  Extract UTM parameters from a map of query parameters.
+
+  Returns a map with all UTM fields (source, medium, campaign, term, content).
+  Values are `nil` if not present in the params.
+
+  ## Examples
+
+      iex> PhxAnalytics.parse_utm(%{"utm_source" => "google", "utm_medium" => "cpc"})
+      %{
+        utm_source: "google",
+        utm_medium: "cpc",
+        utm_campaign: nil,
+        utm_term: nil,
+        utm_content: nil
+      }
+
+  """
   def parse_utm(params \\ %{}) do
     %{
       utm_source: Map.get(params, "utm_source"),
@@ -135,6 +270,18 @@ defmodule PhxAnalytics do
     }
   end
 
+  @doc """
+  Generate a cryptographically secure session ID.
+
+  Returns a 64-character lowercase hexadecimal string (32 random bytes).
+
+  ## Examples
+
+      iex> id = PhxAnalytics.generate_session_id()
+      iex> String.length(id)
+      64
+
+  """
   def generate_session_id() do
     :crypto.strong_rand_bytes(32) |> Base.encode16(case: :lower)
   end
@@ -243,6 +390,7 @@ defmodule PhxAnalytics do
     Module.delete_attribute(env.module, :analytics)
   end
 
+  @doc false
   def handle_event([:phoenix, :live_view, :mount, _], _measurement, metadata, _config) do
     uri =
       metadata
@@ -274,6 +422,7 @@ defmodule PhxAnalytics do
     end
   end
 
+  @doc false
   def handle_event([:phoenix, :live_view, :handle_params, _], _measurement, metadata, _config) do
     uri =
       metadata
@@ -301,6 +450,7 @@ defmodule PhxAnalytics do
     end
   end
 
+  @doc false
   def handle_event([:phoenix, :live_view, :handle_event, _], _measurement, metadata, _config) do
     uri = Process.get(:phx_analytics_uri)
 
@@ -361,6 +511,7 @@ defmodule PhxAnalytics do
     end
   end
 
+  @doc false
   def handle_event(_event, _, _, _) do
     # Skip unknown event handlers
   end

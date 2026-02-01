@@ -1,15 +1,25 @@
 defmodule PhxAnalytics.MixProject do
   use Mix.Project
 
+  @version "0.1.0"
+  @source_url "https://github.com/sufficient/phx_analytics"
+
   def project do
     [
       app: :phx_analytics,
-      version: "0.1.0",
+      version: @version,
       elixir: "~> 1.17",
       start_permanent: Mix.env() == :prod,
       elixirc_paths: elixirc_paths(Mix.env()),
       deps: deps(),
-      docs: docs()
+      docs: docs(),
+
+      # Hex.pm metadata
+      name: "PhxAnalytics",
+      description: "Highly customizable analytics for Phoenix LiveView applications",
+      package: package(),
+      source_url: @source_url,
+      homepage_url: @source_url
     ]
   end
 
@@ -46,8 +56,41 @@ defmodule PhxAnalytics.MixProject do
 
   defp docs do
     [
-      main: "Phoenix Analytics",
-      extras: ["README.md"]
+      main: "readme",
+      source_ref: "v#{@version}",
+      source_url: @source_url,
+      extras: [
+        "README.md",
+        "CHANGELOG.md",
+        "LICENSE"
+      ],
+      groups_for_modules: [
+        Core: [
+          PhxAnalytics,
+          PhxAnalytics.Telemetry,
+          PhxAnalytics.Plug
+        ],
+        Schemas: [
+          PhxAnalytics.Session,
+          PhxAnalytics.Event
+        ],
+        Infrastructure: [
+          PhxAnalytics.Repo,
+          PhxAnalytics.EventQueue,
+          PhxAnalytics.Migration
+        ]
+      ]
+    ]
+  end
+
+  defp package do
+    [
+      maintainers: ["Sufficient"],
+      licenses: ["MIT"],
+      links: %{
+        "GitHub" => @source_url
+      },
+      files: ~w(lib .formatter.exs mix.exs README.md LICENSE CHANGELOG.md)
     ]
   end
 end

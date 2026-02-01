@@ -1,4 +1,50 @@
 defmodule PhxAnalytics.Plug do
+  @moduledoc """
+  Plug middleware for session management and page view tracking.
+
+  This plug handles:
+    * Creating new analytics sessions for first-time visitors
+    * Retrieving existing sessions from cookies
+    * Recording page views for non-LiveView requests
+    * Parsing user-agent and UTM parameters
+
+  LiveView pages are tracked via telemetry handlers instead to avoid duplicates.
+
+  ## Usage
+
+  Add the plug to your router pipeline after `:fetch_session`:
+
+      pipeline :browser do
+        plug :accepts, ["html"]
+        plug :fetch_session
+        plug :fetch_live_flash
+        plug PhxAnalytics.Plug
+        plug :put_root_layout, html: {MyAppWeb.Layouts, :root}
+        plug :protect_from_forgery
+        plug :put_secure_browser_headers
+      end
+
+  ## Options
+
+  The plug accepts the following options:
+
+    * `:event_name` - Custom name for page view events (default: `"Page View"`)
+
+  ## Example with Options
+
+      plug PhxAnalytics.Plug, event_name: "HTTP Request"
+
+  ## Configuration
+
+  The following application config options affect this plug:
+
+      # Session cookie name (default: "phx_analytics_session")
+      config :phx_analytics, :session_cookie_name, "my_session"
+
+      # Session length in seconds (default: 300)
+      config :phx_analytics, :session_length, 600
+  """
+
   import Plug.Conn
 
   def init(opts), do: opts

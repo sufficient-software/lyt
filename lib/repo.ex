@@ -1,4 +1,32 @@
 defmodule PhxAnalytics.Repo do
+  @moduledoc """
+  Repository abstraction layer for PhxAnalytics.
+
+  This module delegates Ecto operations to the application's configured repository.
+  It also provides adapter detection for database-specific operations.
+
+  ## Configuration
+
+  Configure the repository in your application config:
+
+      config :phx_analytics, :repo, MyApp.Repo
+
+  ## Supported Adapters
+
+    * `Ecto.Adapters.Postgres` - PostgreSQL
+    * `Ecto.Adapters.MyXQL` - MySQL
+    * `Ecto.Adapters.SQLite3` - SQLite3
+
+  ## Adapter Detection
+
+  Use `with_adapter/1` to run adapter-specific code:
+
+      PhxAnalytics.Repo.with_adapter(fn
+        :postgres -> # PostgreSQL-specific code
+        :mysql -> # MySQL-specific code
+        :sqlite3 -> # SQLite3-specific code
+      end)
+  """
   def insert!(struct_or_changeset, opts \\ []) do
     delegate(:insert!, [struct_or_changeset], opts)
   end
@@ -25,6 +53,21 @@ defmodule PhxAnalytics.Repo do
     apply(repo, action, arguments ++ [opts])
   end
 
+  @doc """
+  Execute a function with the detected database adapter.
+
+  Calls the provided function with an atom representing the adapter:
+  `:postgres`, `:mysql`, or `:sqlite3`.
+
+  ## Examples
+
+      PhxAnalytics.Repo.with_adapter(fn
+        :postgres -> "PostgreSQL"
+        :mysql -> "MySQL"
+        :sqlite3 -> "SQLite3"
+      end)
+
+  """
   def with_adapter(fun), do: with_adapter(repo(), fun)
 
   def with_adapter(repo, fun) do

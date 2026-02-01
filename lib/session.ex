@@ -1,7 +1,48 @@
 defmodule PhxAnalytics.Session do
+  @moduledoc """
+  Ecto schema representing an analytics session.
+
+  A session groups related page views and events from a single user visit.
+  Sessions capture device information, UTM parameters, and custom metadata.
+
+  ## Fields
+
+    * `:id` - Unique session identifier (64-character hex string)
+    * `:user_id` - Optional user identifier for logged-in users
+    * `:hostname` - The hostname of the request
+    * `:entry` - The first page path visited in this session
+    * `:exit` - The last page path visited (updated on session end)
+    * `:referrer` - The HTTP referrer header value
+    * `:started_at` - When the session began
+    * `:ended_at` - When the session ended
+    * `:screen_width` - Screen width in pixels (if provided)
+    * `:screen_height` - Screen height in pixels (if provided)
+    * `:browser` - Browser name (e.g., "Chrome", "Firefox")
+    * `:browser_version` - Browser version string
+    * `:operating_system` - OS name (e.g., "Mac", "Windows")
+    * `:operating_system_version` - OS version string
+    * `:utm_source` - UTM source parameter
+    * `:utm_medium` - UTM medium parameter
+    * `:utm_campaign` - UTM campaign parameter
+    * `:utm_term` - UTM term parameter
+    * `:utm_content` - UTM content parameter
+    * `:metadata` - Custom metadata map
+
+  ## Upsert Behavior
+
+  When a session with an existing ID is inserted, only the `:metadata` field
+  is updated (see `upsert_keys/0`). This allows sessions to be updated without
+  overwriting the original entry data.
+  """
+
   use Ecto.Schema
   import Ecto.Changeset
 
+  @doc """
+  Returns the list of fields that are updated on conflict during upsert operations.
+
+  Currently only `:metadata` is updated when a session already exists.
+  """
   def upsert_keys(), do: [:metadata]
 
   @primary_key {:id, :string, autogenerate: false}
@@ -29,6 +70,11 @@ defmodule PhxAnalytics.Session do
     timestamps(type: :utc_datetime)
   end
 
+  @doc """
+  Creates a changeset for a session.
+
+  Automatically generates a session ID if one is not provided.
+  """
   def changeset(session, attrs) do
     session
     |> cast(attrs, [
