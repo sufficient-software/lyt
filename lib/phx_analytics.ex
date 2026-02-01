@@ -85,6 +85,8 @@ defmodule PhxAnalytics do
     * `:track_all` - When `true`, tracks all handle_event calls automatically.
     * `:include` - A list of event names to track (without needing `@analytics`).
     * `:exclude` - A list of event names to exclude from tracking.
+    * `:before_save` - A function that receives `(changeset, opts, socket)` and returns
+      `{:ok, changeset}` to proceed, or `:halt`/`nil` to cancel saving.
 
   When both `:include` and `:exclude` are provided, `:include` takes precedence
   (only included events are tracked, exclude is ignored).
@@ -99,6 +101,17 @@ defmodule PhxAnalytics do
 
       # Track all events
       use PhxAnalytics, track_all: true
+
+      # Add a before_save callback at the module level
+      use PhxAnalytics, before_save: &__MODULE__.filter_analytics/3
+
+      def filter_analytics(changeset, _opts, socket) do
+        if socket.assigns.user.admin? do
+          {:ok, changeset}
+        else
+          :halt
+        end
+      end
   """
   defmacro __using__(opts) do
     quote do
@@ -117,6 +130,7 @@ defmodule PhxAnalytics do
     track_all = Keyword.get(opts, :track_all, false)
     include_list = Keyword.get(opts, :include, [])
     exclude_list = Keyword.get(opts, :exclude, [])
+    before_save = Keyword.get(opts, :before_save)
 
     quote do
       def phx_analytics_tracked_event_handlers do
@@ -127,7 +141,8 @@ defmodule PhxAnalytics do
         %{
           track_all: unquote(track_all),
           include: unquote(include_list),
-          exclude: unquote(exclude_list)
+          exclude: unquote(exclude_list),
+          before_save: unquote(before_save)
         }
       end
     end
@@ -232,7 +247,7 @@ defmodule PhxAnalytics do
       event_name = metadata.event
 
       case event_tracked?(view, event_name) do
-        {true, opts} ->
+        {true, opts, module_opts} ->
           session_id = Process.get(:phx_analytics_session_id)
 
           # Use custom name if provided, otherwise use the event name
@@ -252,7 +267,7 @@ defmodule PhxAnalytics do
                 Map.merge(%{"params" => metadata.params}, custom)
             end
 
-          %{
+          attrs = %{
             session_id: session_id,
             name: name,
             hostname: uri.host,
@@ -260,7 +275,19 @@ defmodule PhxAnalytics do
             path: uri.path,
             query: uri.query
           }
-          |> create_event()
+
+          changeset = Event.changeset(%Event{}, attrs)
+
+          # Get before_save callback - decorator level takes precedence over module level
+          before_save_fn = Map.get(opts, :before_save) || Map.get(module_opts, :before_save)
+
+          case run_before_save(before_save_fn, changeset, opts, metadata.socket) do
+            {:ok, final_changeset} ->
+              Repo.insert(final_changeset)
+
+            _ ->
+              :ok
+          end
 
         false ->
           :ok
@@ -272,15 +299,30 @@ defmodule PhxAnalytics do
     # Skip unknown event handlers
   end
 
-  # Returns {true, opts} if tracked, false otherwise
-  # opts contains any overrides like :name or :metadata
+  defp run_before_save(nil, changeset, _opts, _socket), do: {:ok, changeset}
+
+  defp run_before_save(before_save_fn, changeset, opts, socket)
+       when is_function(before_save_fn, 3) do
+    case before_save_fn.(changeset, opts, socket) do
+      {:ok, %Ecto.Changeset{} = cs} -> {:ok, cs}
+      :halt -> :halt
+      nil -> :halt
+      _ -> :halt
+    end
+  end
+
+  defp run_before_save(_invalid, changeset, _opts, _socket), do: {:ok, changeset}
+
+  # Returns {true, opts, module_opts} if tracked, false otherwise
+  # opts contains any overrides like :name, :metadata, or :before_save from the decorator
+  # module_opts contains module-level options like :before_save
   defp event_tracked?(view, event_name) do
     # Get tracking options from the module
     module_opts =
       if function_exported?(view, :phx_analytics_tracking_opts, 0) do
         view.phx_analytics_tracking_opts()
       else
-        %{track_all: false, include: [], exclude: []}
+        %{track_all: false, include: [], exclude: [], before_save: nil}
       end
 
     tracked_handlers =
@@ -303,15 +345,15 @@ defmodule PhxAnalytics do
       # If explicitly tracked with @analytics, return true with options
       explicit_tracking != nil ->
         {:found, opts} = explicit_tracking
-        {true, opts}
+        {true, opts, module_opts}
 
       # If include list is provided, only track events in the list
       module_opts.include != [] ->
-        if event_name in module_opts.include, do: {true, %{}}, else: false
+        if event_name in module_opts.include, do: {true, %{}, module_opts}, else: false
 
       # If track_all is true, track unless excluded
       module_opts.track_all ->
-        if event_name not in module_opts.exclude, do: {true, %{}}, else: false
+        if event_name not in module_opts.exclude, do: {true, %{}, module_opts}, else: false
 
       # Default: not tracked
       true ->

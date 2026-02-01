@@ -23,6 +23,7 @@ defmodule PhxAnalytics.Test.Router do
     live("/live-test/:id", TestLive)
     live("/live-test-include", TestLiveInclude)
     live("/live-test-track-all", TestLiveTrackAll)
+    live("/live-test-before-save", TestLiveBeforeSave)
     get("/plug-test", PageController, :index)
   end
 

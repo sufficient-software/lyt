@@ -215,6 +215,50 @@ defmodule PhxAnalytics.IntegrationTest do
     end
   end
 
+  describe "before_save callback" do
+    test "module-level before_save allows event to be saved", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/live-test-before-save")
+      initial_event_count = event_count()
+
+      render_click(view, "normal_event")
+
+      assert event_count() == initial_event_count + 1
+    end
+
+    test "module-level before_save can halt event saving", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/live-test-before-save")
+
+      # First click sets should_track to false
+      render_click(view, "halted_event")
+      initial_event_count = event_count()
+
+      # Second click should be halted by before_save
+      render_click(view, "normal_event")
+
+      assert event_count() == initial_event_count
+    end
+
+    test "decorator-level before_save takes precedence over module-level", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/live-test-before-save")
+      initial_event_count = event_count()
+
+      # This event has a decorator-level before_save that always halts
+      render_click(view, "decorator_halted")
+
+      assert event_count() == initial_event_count
+    end
+
+    test "before_save can modify the changeset", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/live-test-before-save")
+
+      render_click(view, "modify_event")
+
+      events = all_events()
+      modified_event = Enum.find(events, &(&1.name == "Modified Event Name"))
+      assert modified_event != nil
+    end
+  end
+
   describe "session data" do
     test "captures browser info from user agent", %{conn: conn} do
       conn =
