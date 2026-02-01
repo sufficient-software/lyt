@@ -3,7 +3,7 @@ defmodule PhxAnalytics do
   Documentation for `PhxAnalytics`.
   """
 
-  alias PhxAnalytics.{Session, Event, Repo}
+  alias PhxAnalytics.{Session, Event, Repo, EventQueue}
 
   def attach(_opts \\ []) do
     :telemetry.attach_many(
@@ -18,6 +18,33 @@ defmodule PhxAnalytics do
     )
   end
 
+  @doc """
+  Queue a session for async insertion.
+  Returns a Session struct with the generated ID immediately (before DB insert).
+
+  In sync mode (configured with `config :phx_analytics, sync_mode: true`), this
+  will insert synchronously instead of queueing. Useful for testing.
+  """
+  def queue_session(attrs \\ %{}) do
+    if sync_mode?() do
+      create_session(attrs)
+    else
+      # Generate ID if not provided
+      attrs = ensure_session_id(attrs)
+
+      # Build the session struct to return immediately
+      session = struct(Session, atomize_keys(attrs))
+
+      # Queue for async insert
+      EventQueue.queue_session(attrs)
+
+      session
+    end
+  end
+
+  @doc """
+  Create a session synchronously. Use `queue_session/1` for async insertion.
+  """
   def create_session(attrs \\ %{}) do
     %Session{}
     |> Session.changeset(attrs)
@@ -30,6 +57,23 @@ defmodule PhxAnalytics do
     )
   end
 
+  @doc """
+  Queue an event for async insertion.
+
+  In sync mode (configured with `config :phx_analytics, sync_mode: true`), this
+  will insert synchronously instead of queueing. Useful for testing.
+  """
+  def queue_event(attrs) do
+    if sync_mode?() do
+      create_event(attrs)
+    else
+      EventQueue.queue_event(attrs)
+    end
+  end
+
+  @doc """
+  Create an event synchronously. Use `queue_event/1` for async insertion.
+  """
   def create_event(attrs) do
     %Event{}
     |> Event.changeset(attrs)
@@ -38,6 +82,24 @@ defmodule PhxAnalytics do
       {:ok, event} -> event
       {:error, _changeset} -> nil
     end
+  end
+
+  defp ensure_session_id(attrs) when is_map(attrs) do
+    id = attrs[:id] || attrs["id"] || generate_session_id()
+    Map.put(attrs, :id, id)
+  end
+
+  defp sync_mode? do
+    Application.get_env(:phx_analytics, :sync_mode, false)
+  end
+
+  defp atomize_keys(map) when is_map(map) do
+    Map.new(map, fn
+      {k, v} when is_binary(k) -> {String.to_existing_atom(k), v}
+      {k, v} when is_atom(k) -> {k, v}
+    end)
+  rescue
+    ArgumentError -> map
   end
 
   def parse_user_agent(user_agent) do
@@ -208,7 +270,7 @@ defmodule PhxAnalytics do
         path: uri.path,
         query: uri.query
       }
-      |> create_event()
+      |> queue_event()
     end
   end
 
@@ -235,7 +297,7 @@ defmodule PhxAnalytics do
         path: uri.path,
         query: uri.query
       }
-      |> create_event()
+      |> queue_event()
     end
   end
 
@@ -283,7 +345,11 @@ defmodule PhxAnalytics do
 
           case run_before_save(before_save_fn, changeset, opts, metadata.socket) do
             {:ok, final_changeset} ->
-              Repo.insert(final_changeset)
+              if sync_mode?() do
+                Repo.insert(final_changeset)
+              else
+                EventQueue.queue_event_changeset(final_changeset)
+              end
 
             _ ->
               :ok

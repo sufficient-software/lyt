@@ -14,3 +14,6 @@ config :logger, level: :none
 
 # Disable Phoenix debug logs
 config :phoenix, :logger, false
+
+# Use synchronous mode for tests to avoid sandbox issues with the EventQueue GenServer
+config :phx_analytics, sync_mode: true

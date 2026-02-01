@@ -1,4 +1,17 @@
 defmodule PhxAnalytics.Telemetry do
+  @moduledoc """
+  Supervisor for PhxAnalytics processes.
+
+  Starts the EventQueue GenServer and attaches telemetry handlers.
+
+  Add this to your application supervision tree:
+
+      children = [
+        # ... other children
+        PhxAnalytics.Telemetry
+      ]
+  """
+
   require Logger
   use Supervisor
 
@@ -8,7 +21,9 @@ defmodule PhxAnalytics.Telemetry do
 
   @impl Supervisor
   def init(_) do
-    children = []
+    children = [
+      PhxAnalytics.EventQueue
+    ]
 
     case attach() do
       :ok ->

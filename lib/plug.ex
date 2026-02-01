@@ -51,7 +51,7 @@ defmodule PhxAnalytics.Plug do
   end
 
   defp get_or_create_session(conn, nil) do
-    session = create_session(conn)
+    session = queue_session(conn)
 
     conn =
       put_resp_cookie(conn, session_cookie_name(), session.id,
@@ -68,15 +68,15 @@ defmodule PhxAnalytics.Plug do
         get_or_create_session(conn, nil)
 
       session ->
+        # Re-queue the session to update it (upsert behavior)
+        queue_session_update(conn, session)
         {conn, session}
     end
   end
 
-  defp create_session(conn) do
-    stored_session_id = Map.get(conn.cookies, session_cookie_name())
-
+  defp queue_session(conn) do
     %{
-      id: stored_session_id,
+      id: PhxAnalytics.generate_session_id(),
       user_id: conn.assigns[:exa_id],
       hostname: conn.host,
       referrer: req_header_or_nil(conn, "referrer"),
@@ -85,7 +85,22 @@ defmodule PhxAnalytics.Plug do
     }
     |> Map.merge(PhxAnalytics.parse_user_agent(req_header_or_nil(conn, "user-agent")))
     |> Map.merge(PhxAnalytics.parse_utm(conn.params))
-    |> PhxAnalytics.create_session()
+    |> PhxAnalytics.queue_session()
+  end
+
+  defp queue_session_update(conn, existing_session) do
+    # Queue an update for the existing session (will upsert)
+    %{
+      id: existing_session.id,
+      user_id: conn.assigns[:exa_id] || existing_session.user_id,
+      hostname: existing_session.hostname,
+      referrer: existing_session.referrer,
+      started_at: existing_session.started_at,
+      entry: existing_session.entry
+    }
+    |> Map.merge(PhxAnalytics.parse_user_agent(req_header_or_nil(conn, "user-agent")))
+    |> Map.merge(PhxAnalytics.parse_utm(conn.params))
+    |> PhxAnalytics.queue_session()
   end
 
   defp record_page_view(conn) do
@@ -104,7 +119,7 @@ defmodule PhxAnalytics.Plug do
           path: conn.request_path,
           query: conn.query_string
         }
-        |> PhxAnalytics.create_event()
+        |> PhxAnalytics.queue_event()
     end
   end
 end
