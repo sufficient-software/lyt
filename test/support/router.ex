@@ -21,6 +21,8 @@ defmodule PhxAnalytics.Test.Router do
 
     live("/live-test", TestLive)
     live("/live-test/:id", TestLive)
+    live("/live-test-include", TestLiveInclude)
+    live("/live-test-track-all", TestLiveTrackAll)
     get("/plug-test", PageController, :index)
   end
 

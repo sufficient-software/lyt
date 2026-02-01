@@ -77,9 +77,33 @@ defmodule PhxAnalytics do
     :crypto.strong_rand_bytes(32) |> Base.encode16(case: :lower)
   end
 
-  defmacro __using__(_opts) do
+  @doc """
+  Use PhxAnalytics in a LiveView module to enable event tracking.
+
+  ## Options
+
+    * `:track_all` - When `true`, tracks all handle_event calls automatically.
+    * `:include` - A list of event names to track (without needing `@analytics`).
+    * `:exclude` - A list of event names to exclude from tracking.
+
+  When both `:include` and `:exclude` are provided, `:include` takes precedence
+  (only included events are tracked, exclude is ignored).
+
+  ## Examples
+
+      # Track specific events without @analytics decorator
+      use PhxAnalytics, include: ["submit_form", "click_button"]
+
+      # Track all events except these
+      use PhxAnalytics, track_all: true, exclude: ["ping", "heartbeat"]
+
+      # Track all events
+      use PhxAnalytics, track_all: true
+  """
+  defmacro __using__(opts) do
     quote do
       Module.register_attribute(__MODULE__, :_phx_analytics_tracked_functions, accumulate: true)
+      Module.put_attribute(__MODULE__, :_phx_analytics_opts, unquote(opts))
       @before_compile PhxAnalytics
       @on_definition {PhxAnalytics, :__on_definition__}
       require PhxAnalytics
@@ -88,10 +112,23 @@ defmodule PhxAnalytics do
 
   defmacro __before_compile__(env) do
     tracked_event_handlers = Module.get_attribute(env.module, :_phx_analytics_tracked_functions)
+    opts = Module.get_attribute(env.module, :_phx_analytics_opts) || []
+
+    track_all = Keyword.get(opts, :track_all, false)
+    include_list = Keyword.get(opts, :include, [])
+    exclude_list = Keyword.get(opts, :exclude, [])
 
     quote do
       def phx_analytics_tracked_event_handlers do
         unquote(Macro.escape(tracked_event_handlers))
+      end
+
+      def phx_analytics_tracking_opts do
+        %{
+          track_all: unquote(track_all),
+          include: unquote(include_list),
+          exclude: unquote(exclude_list)
+        }
       end
     end
   end
@@ -181,18 +218,10 @@ defmodule PhxAnalytics do
     uri = Process.get(:phx_analytics_uri)
 
     if uri && !path_excluded?(uri.path) do
-      tracked_events = metadata.socket.view.phx_analytics_tracked_event_handlers()
+      view = metadata.socket.view
+      event_name = metadata.event
 
-      is_tracked =
-        !is_nil(
-          Enum.find(tracked_events, fn
-            {:handle_event, [event]} ->
-              event == metadata.event
-
-            _ ->
-              false
-          end)
-        )
+      is_tracked = event_tracked?(view, event_name)
 
       if is_tracked do
         session_id = Process.get(:phx_analytics_session_id)
@@ -213,6 +242,48 @@ defmodule PhxAnalytics do
 
   def handle_event(_event, _, _, _) do
     # Skip unknown event handlers
+  end
+
+  defp event_tracked?(view, event_name) do
+    # Get tracking options from the module
+    opts =
+      if function_exported?(view, :phx_analytics_tracking_opts, 0) do
+        view.phx_analytics_tracking_opts()
+      else
+        %{track_all: false, include: [], exclude: []}
+      end
+
+    tracked_handlers =
+      if function_exported?(view, :phx_analytics_tracked_event_handlers, 0) do
+        view.phx_analytics_tracked_event_handlers()
+      else
+        []
+      end
+
+    # Check if explicitly tracked via @analytics decorator
+    explicitly_tracked =
+      Enum.any?(tracked_handlers, fn
+        {:handle_event, [event]} -> event == event_name
+        _ -> false
+      end)
+
+    cond do
+      # If explicitly tracked with @analytics, always track
+      explicitly_tracked ->
+        true
+
+      # If include list is provided, only track events in the list
+      opts.include != [] ->
+        event_name in opts.include
+
+      # If track_all is true, track unless excluded
+      opts.track_all ->
+        event_name not in opts.exclude
+
+      # Default: not tracked
+      true ->
+        false
+    end
   end
 
   defp path_excluded?(nil), do: false

@@ -122,6 +122,73 @@ defmodule PhxAnalytics.IntegrationTest do
     end
   end
 
+  describe "include list tracking" do
+    test "tracks events in the include list", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/live-test-include")
+      initial_event_count = event_count()
+
+      # Click an included event
+      render_click(view, "included_event", %{"value" => "test"})
+
+      # Should have created an event
+      assert event_count() == initial_event_count + 1
+    end
+
+    test "tracks multiple events in the include list", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/live-test-include")
+      initial_event_count = event_count()
+
+      render_click(view, "included_event", %{"value" => "test"})
+      render_click(view, "another_included")
+
+      # Should have created two events
+      assert event_count() == initial_event_count + 2
+    end
+
+    test "does not track events not in the include list", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/live-test-include")
+      initial_event_count = event_count()
+
+      # Click a non-included event
+      render_click(view, "not_included")
+
+      # Should not have created an event
+      assert event_count() == initial_event_count
+    end
+  end
+
+  describe "track_all with exclude list" do
+    test "tracks events not in the exclude list", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/live-test-track-all")
+      initial_event_count = event_count()
+
+      render_click(view, "tracked_event", %{"value" => "test"})
+
+      assert event_count() == initial_event_count + 1
+    end
+
+    test "tracks multiple events not in exclude list", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/live-test-track-all")
+      initial_event_count = event_count()
+
+      render_click(view, "tracked_event", %{"value" => "test"})
+      render_click(view, "another_tracked")
+
+      assert event_count() == initial_event_count + 2
+    end
+
+    test "does not track events in the exclude list", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/live-test-track-all")
+      initial_event_count = event_count()
+
+      render_click(view, "excluded_event")
+      render_click(view, "heartbeat")
+
+      # Neither excluded event should create analytics events
+      assert event_count() == initial_event_count
+    end
+  end
+
   describe "session data" do
     test "captures browser info from user agent", %{conn: conn} do
       conn =
