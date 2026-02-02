@@ -6,6 +6,15 @@ config :lyt, Lyt.Test.Sqlite3Repo,
   priv: "priv/repo",
   log: false
 
+config :lyt, Lyt.Test.MySQLRepo,
+  username: "root",
+  password: "",
+  hostname: "localhost",
+  database: "lyt_test",
+  pool: Ecto.Adapters.SQL.Sandbox,
+  priv: "priv/repo",
+  log: false
+
 config :lyt, ecto_repos: [Lyt.Test.Sqlite3Repo]
 config :lyt, :repo, Lyt.Test.Sqlite3Repo
 config :lyt, otp_app: :lyt
