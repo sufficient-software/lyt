@@ -43,6 +43,9 @@ jobs:
       - name: Install dependencies
         run: mix deps.get
 
+      - name: Download UA Inspector database
+        run: mix ua_inspector.download --force
+
       - name: Compile
         run: mix compile --warnings-as-errors
 
