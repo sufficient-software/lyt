@@ -1,14 +1,14 @@
-defmodule PhxAnalytics.Migration.SQLite3.V01 do
+defmodule Lyt.Migration.SQLite3.V01 do
   @moduledoc false
 
   use Ecto.Migration
 
   def up(_opts) do
-    create table(:phx_analytics_meta, primary_key: [name: :key, type: :string]) do
+    create table(:lyt_meta, primary_key: [name: :key, type: :string]) do
       add(:value, :string, null: false)
     end
 
-    create table(:phx_analytics_sessions, primary_key: false) do
+    create table(:lyt_sessions, primary_key: false) do
       add(:id, :string, size: 32, primary_key: true)
       add(:user_id, :string)
       add(:hostname, :string)
@@ -33,26 +33,24 @@ defmodule PhxAnalytics.Migration.SQLite3.V01 do
       timestamps(type: :utc_datetime)
     end
 
-    create table(:phx_analytics_events) do
+    create table(:lyt_events) do
       add(:name, :string)
       add(:hostname, :string)
       add(:path, :text)
       add(:query, :text)
       add(:metadata, :map)
 
-      add(:session_id, references(:phx_analytics_sessions, type: :string, on_delete: :nothing),
-        size: 32
-      )
+      add(:session_id, references(:lyt_sessions, type: :string, on_delete: :nothing), size: 32)
 
       timestamps(type: :utc_datetime)
     end
 
-    create(index(:phx_analytics_events, [:session_id]))
+    create(index(:lyt_events, [:session_id]))
   end
 
   def down(_opts) do
-    drop(table(:phx_analytics_events))
-    drop(table(:phx_analytics_sessions))
-    drop(table(:phx_analytics_meta))
+    drop(table(:lyt_events))
+    drop(table(:lyt_sessions))
+    drop(table(:lyt_meta))
   end
 end

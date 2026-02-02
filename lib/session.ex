@@ -1,4 +1,4 @@
-defmodule PhxAnalytics.Session do
+defmodule Lyt.Session do
   @moduledoc """
   Ecto schema representing an analytics session.
 
@@ -46,7 +46,7 @@ defmodule PhxAnalytics.Session do
   def upsert_keys(), do: [:metadata]
 
   @primary_key {:id, :string, autogenerate: false}
-  schema "phx_analytics_sessions" do
+  schema "lyt_sessions" do
     field(:exit, :string)
     field(:started_at, :naive_datetime)
     field(:metadata, :map)
@@ -107,7 +107,7 @@ defmodule PhxAnalytics.Session do
     current_id = get_field(changeset, :id)
 
     if is_nil(current_id) || current_id == "" do
-      put_change(changeset, :id, PhxAnalytics.generate_session_id())
+      put_change(changeset, :id, Lyt.generate_session_id())
     else
       changeset
     end

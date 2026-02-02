@@ -1,6 +1,6 @@
-defmodule PhxAnalytics.Telemetry do
+defmodule Lyt.Telemetry do
   @moduledoc """
-  Supervisor for PhxAnalytics processes.
+  Supervisor for Lyt processes.
 
   Starts the EventQueue GenServer and attaches telemetry handlers.
 
@@ -8,7 +8,7 @@ defmodule PhxAnalytics.Telemetry do
 
       children = [
         # ... other children
-        PhxAnalytics.Telemetry
+        Lyt.Telemetry
       ]
   """
 
@@ -22,7 +22,7 @@ defmodule PhxAnalytics.Telemetry do
   @impl Supervisor
   def init(_) do
     children = [
-      PhxAnalytics.EventQueue
+      Lyt.EventQueue
     ]
 
     case attach() do
@@ -38,13 +38,13 @@ defmodule PhxAnalytics.Telemetry do
 
   defp attach() do
     :telemetry.attach_many(
-      <<"phx_analytics">>,
+      <<"lyt">>,
       [
         [:phoenix, :live_view, :mount, :stop],
         [:phoenix, :live_view, :handle_params, :stop],
         [:phoenix, :live_view, :handle_event, :stop]
       ],
-      &PhxAnalytics.handle_event/4,
+      &Lyt.handle_event/4,
       nil
     )
   end

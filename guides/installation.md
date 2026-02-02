@@ -1,6 +1,6 @@
 # Installation Guide
 
-This guide walks you through installing and configuring PhxAnalytics in a Phoenix application.
+This guide walks you through installing and configuring Lyt in a Phoenix application.
 
 ## Prerequisites
 
@@ -11,17 +11,17 @@ This guide walks you through installing and configuring PhxAnalytics in a Phoeni
 
 ## Step 1: Add the Dependency
 
-Add `phx_analytics` to your list of dependencies in `mix.exs`:
+Add `lyt` to your list of dependencies in `mix.exs`:
 
 ```elixir
 def deps do
   [
-    {:phx_analytics, "~> 0.1.0"}
+    {:lyt, "~> 0.1.0"}
   ]
 end
 ```
 
-PhxAnalytics works with your existing database adapter. Make sure you have one of these adapters in your dependencies:
+Lyt works with your existing database adapter. Make sure you have one of these adapters in your dependencies:
 
 ```elixir
 # PostgreSQL (most common)
@@ -45,11 +45,11 @@ mix deps.get
 
 ## Step 2: Configure the Repository
 
-Tell PhxAnalytics which Ecto repository to use. Add this to your `config/config.exs`:
+Tell Lyt which Ecto repository to use. Add this to your `config/config.exs`:
 
 ```elixir
 # config/config.exs
-config :phx_analytics, :repo, MyApp.Repo
+config :lyt, :repo, MyApp.Repo
 ```
 
 Replace `MyApp.Repo` with your application's actual Repo module name.
@@ -59,21 +59,21 @@ Replace `MyApp.Repo` with your application's actual Repo module name.
 Generate a new migration file:
 
 ```bash
-mix ecto.gen.migration create_phx_analytics_tables
+mix ecto.gen.migration create_lyt_tables
 ```
 
 Open the generated file in `priv/repo/migrations/` and replace its contents with:
 
 ```elixir
-defmodule MyApp.Repo.Migrations.CreatePhxAnalyticsTables do
+defmodule MyApp.Repo.Migrations.CreateLytTables do
   use Ecto.Migration
 
   def up do
-    PhxAnalytics.Migration.up()
+    Lyt.Migration.up()
   end
 
   def down do
-    PhxAnalytics.Migration.down()
+    Lyt.Migration.down()
   end
 end
 ```
@@ -86,13 +86,13 @@ mix ecto.migrate
 
 This creates three tables in your database:
 
-- `phx_analytics_meta` - Internal migration tracking
-- `phx_analytics_sessions` - User session data
-- `phx_analytics_events` - Page views and custom events
+- `lyt_meta` - Internal migration tracking
+- `lyt_sessions` - User session data
+- `lyt_events` - Page views and custom events
 
 ## Step 4: Add to Supervision Tree
 
-Add `PhxAnalytics.Telemetry` to your application's supervision tree. Open `lib/my_app/application.ex` and add it to the children list:
+Add `Lyt.Telemetry` to your application's supervision tree. Open `lib/my_app/application.ex` and add it to the children list:
 
 ```elixir
 defmodule MyApp.Application do
@@ -103,7 +103,7 @@ defmodule MyApp.Application do
     children = [
       MyAppWeb.Telemetry,
       MyApp.Repo,
-      PhxAnalytics.Telemetry,  # Add this line
+      Lyt.Telemetry,  # Add this line
       {DNSCluster, query: Application.get_env(:my_app, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: MyApp.PubSub},
       {Finch, name: MyApp.Finch},
@@ -118,11 +118,11 @@ defmodule MyApp.Application do
 end
 ```
 
-> **Important:** Add `PhxAnalytics.Telemetry` after your `Repo` but before your `Endpoint`.
+> **Important:** Add `Lyt.Telemetry` after your `Repo` but before your `Endpoint`.
 
 ## Step 5: Add the Plug
 
-Add `PhxAnalytics.Plug` to your browser pipeline in `lib/my_app_web/router.ex`:
+Add `Lyt.Plug` to your browser pipeline in `lib/my_app_web/router.ex`:
 
 ```elixir
 defmodule MyAppWeb.Router do
@@ -132,7 +132,7 @@ defmodule MyAppWeb.Router do
     plug :accepts, ["html"]
     plug :fetch_session
     plug :fetch_live_flash
-    plug PhxAnalytics.Plug  # Add this line
+    plug Lyt.Plug  # Add this line
     plug :put_root_layout, html: {MyAppWeb.Layouts, :root}
     plug :protect_from_forgery
     plug :put_secure_browser_headers
@@ -159,31 +159,31 @@ Visit a few pages in your browser, then check if analytics are being recorded:
 import Ecto.Query
 
 # Check for sessions
-MyApp.Repo.all(PhxAnalytics.Session) |> length()
+MyApp.Repo.all(Lyt.Session) |> length()
 
 # Check for events
-MyApp.Repo.all(PhxAnalytics.Event) |> length()
+MyApp.Repo.all(Lyt.Event) |> length()
 ```
 
 You should see sessions and events being created as you browse your application.
 
 ## Next Steps
 
-Now that PhxAnalytics is installed, you can:
+Now that Lyt is installed, you can:
 
 - Track custom events in your LiveView modules using the `@analytics` decorator
 - Configure tracking options like excluded paths and session length
 - Query your analytics data using Ecto to build dashboards
 
-See the `PhxAnalytics` module documentation for detailed usage examples.
+See the `Lyt` module documentation for detailed usage examples.
 
 ## Troubleshooting
 
 ### Events not being recorded
 
-1. **Check the supervision tree** - Ensure `PhxAnalytics.Telemetry` is in your application's children list
-2. **Check the plug order** - `PhxAnalytics.Plug` must come after `:fetch_session`
-3. **Check the repo config** - Verify `config :phx_analytics, :repo, MyApp.Repo` is set correctly
+1. **Check the supervision tree** - Ensure `Lyt.Telemetry` is in your application's children list
+2. **Check the plug order** - `Lyt.Plug` must come after `:fetch_session`
+3. **Check the repo config** - Verify `config :lyt, :repo, MyApp.Repo` is set correctly
 
 ### Migration errors
 
@@ -196,7 +196,7 @@ If you get migration errors, check that:
 
 LiveView tracking requires:
 
-1. `PhxAnalytics.Telemetry` in your supervision tree (attaches telemetry handlers)
+1. `Lyt.Telemetry` in your supervision tree (attaches telemetry handlers)
 2. The session cookie to be passed to LiveView via the Plug
 
 ## Test Configuration
@@ -205,7 +205,7 @@ For testing, enable synchronous mode to avoid timing issues with the async event
 
 ```elixir
 # config/test.exs
-config :phx_analytics, :sync_mode, true
+config :lyt, :sync_mode, true
 ```
 
 This ensures events are inserted immediately rather than being batched, making tests deterministic.

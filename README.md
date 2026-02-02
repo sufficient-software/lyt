@@ -1,11 +1,11 @@
-# PhxAnalytics
+# Lyt
 
-[![Hex.pm](https://img.shields.io/hexpm/v/phx_analytics.svg)](https://hex.pm/packages/phx_analytics)
-[![Docs](https://img.shields.io/badge/hex-docs-blue.svg)](https://hexdocs.pm/phx_analytics)
+[![Hex.pm](https://img.shields.io/hexpm/v/lyt.svg)](https://hex.pm/packages/lyt)
+[![Docs](https://img.shields.io/badge/hex-docs-blue.svg)](https://hexdocs.pm/lyt)
 
 Highly customizable analytics for Phoenix LiveView applications.
 
-PhxAnalytics provides automatic tracking of page views and custom events in Phoenix
+Lyt provides automatic tracking of page views and custom events in Phoenix
 LiveView applications. It captures session data including browser information, UTM
 parameters, and custom metadata.
 
@@ -21,12 +21,12 @@ parameters, and custom metadata.
 
 ## Installation
 
-Add `phx_analytics` to your list of dependencies in `mix.exs`:
+Add `lyt` to your list of dependencies in `mix.exs`:
 
 ```elixir
 def deps do
   [
-    {:phx_analytics, "~> 0.1.0"},
+    {:lyt, "~> 0.1.0"},
     # Include your database adapter (one of the following):
     {:postgrex, ">= 0.0.0"},     # for PostgreSQL
     {:myxql, ">= 0.0.0"},        # for MySQL
@@ -40,11 +40,11 @@ end
 
 ### 1. Configure the Repository
 
-Tell PhxAnalytics which Ecto repository to use:
+Tell Lyt which Ecto repository to use:
 
 ```elixir
 # config/config.exs
-config :phx_analytics, :repo, MyApp.Repo
+config :lyt, :repo, MyApp.Repo
 ```
 
 ### 2. Run Migrations
@@ -62,11 +62,11 @@ defmodule MyApp.Repo.Migrations.CreateAnalyticsTables do
   use Ecto.Migration
 
   def up do
-    PhxAnalytics.Migration.up()
+    Lyt.Migration.up()
   end
 
   def down do
-    PhxAnalytics.Migration.down()
+    Lyt.Migration.down()
   end
 end
 ```
@@ -79,14 +79,14 @@ mix ecto.migrate
 
 ### 3. Add to Supervision Tree
 
-Add the PhxAnalytics supervisor to your application:
+Add the Lyt supervisor to your application:
 
 ```elixir
 # lib/my_app/application.ex
 def start(_type, _args) do
   children = [
     MyApp.Repo,
-    PhxAnalytics.Telemetry,  # Add this line
+    Lyt.Telemetry,  # Add this line
     MyAppWeb.Endpoint
   ]
 
@@ -97,7 +97,7 @@ end
 
 ### 4. Add the Plug
 
-Add `PhxAnalytics.Plug` to your router pipeline:
+Add `Lyt.Plug` to your router pipeline:
 
 ```elixir
 # lib/my_app_web/router.ex
@@ -105,14 +105,14 @@ pipeline :browser do
   plug :accepts, ["html"]
   plug :fetch_session
   plug :fetch_live_flash
-  plug PhxAnalytics.Plug  # Add this line
+  plug Lyt.Plug  # Add this line
   plug :put_root_layout, html: {MyAppWeb.Layouts, :root}
   plug :protect_from_forgery
   plug :put_secure_browser_headers
 end
 ```
 
-That's it! PhxAnalytics will now automatically track:
+That's it! Lyt will now automatically track:
 
 - Page views for regular (non-LiveView) requests
 - LiveView mounts and navigation
@@ -126,7 +126,7 @@ To track specific LiveView events, use the `@analytics` decorator:
 ```elixir
 defmodule MyAppWeb.DashboardLive do
   use MyAppWeb, :live_view
-  use PhxAnalytics
+  use Lyt
 
   @analytics true
   def handle_event("submit_form", params, socket) do
@@ -168,13 +168,13 @@ Configure tracking at the module level:
 
 ```elixir
 # Track all events automatically
-use PhxAnalytics, track_all: true
+use Lyt, track_all: true
 
 # Track all events except specific ones
-use PhxAnalytics, track_all: true, exclude: ["ping", "heartbeat"]
+use Lyt, track_all: true, exclude: ["ping", "heartbeat"]
 
 # Only track specific events (without needing @analytics)
-use PhxAnalytics, include: ["submit_form", "click_button"]
+use Lyt, include: ["submit_form", "click_button"]
 ```
 
 ### Before-Save Callbacks
@@ -182,7 +182,7 @@ use PhxAnalytics, include: ["submit_form", "click_button"]
 Filter or modify events before they're saved:
 
 ```elixir
-use PhxAnalytics, before_save: &__MODULE__.filter_analytics/3
+use Lyt, before_save: &__MODULE__.filter_analytics/3
 
 def filter_analytics(changeset, opts, socket) do
   # Skip tracking for admin users
@@ -217,22 +217,22 @@ All configuration is optional. Here are the available options:
 # config/config.exs
 
 # Required: Your Ecto repository
-config :phx_analytics, :repo, MyApp.Repo
+config :lyt, :repo, MyApp.Repo
 
-# Session cookie name (default: "phx_analytics_session")
-config :phx_analytics, :session_cookie_name, "my_analytics_session"
+# Session cookie name (default: "lyt_session")
+config :lyt, :session_cookie_name, "my_analytics_session"
 
 # Session length in seconds (default: 300)
-config :phx_analytics, :session_length, 600
+config :lyt, :session_length, 600
 
 # Paths to exclude from tracking (default: [])
-config :phx_analytics, :excluded_paths, ["/health", "/metrics", "/api"]
+config :lyt, :excluded_paths, ["/health", "/metrics", "/api"]
 
 # Enable synchronous mode for testing (default: false)
-config :phx_analytics, :sync_mode, false
+config :lyt, :sync_mode, false
 
 # Event queue configuration
-config :phx_analytics, PhxAnalytics.EventQueue,
+config :lyt, Lyt.EventQueue,
   flush_interval: 100,  # ms between batch inserts
   batch_size: 50        # max items per batch
 ```
@@ -243,14 +243,14 @@ For testing, enable synchronous mode to avoid async timing issues:
 
 ```elixir
 # config/test.exs
-config :phx_analytics, :sync_mode, true
+config :lyt, :sync_mode, true
 ```
 
 ## Database Schema
 
-PhxAnalytics creates the following tables:
+Lyt creates the following tables:
 
-### `phx_analytics_sessions`
+### `lyt_sessions`
 
 | Column                     | Type     | Description                 |
 | -------------------------- | -------- | --------------------------- |
@@ -275,7 +275,7 @@ PhxAnalytics creates the following tables:
 | `utm_content`              | string   | UTM content                 |
 | `metadata`                 | map      | Custom metadata             |
 
-### `phx_analytics_events`
+### `lyt_events`
 
 | Column       | Type    | Description                  |
 | ------------ | ------- | ---------------------------- |
@@ -295,22 +295,22 @@ Query your analytics data using Ecto:
 import Ecto.Query
 
 # Get all sessions from the last 24 hours
-from(s in PhxAnalytics.Session,
+from(s in Lyt.Session,
   where: s.inserted_at > ago(24, "hour"),
   order_by: [desc: s.inserted_at]
 )
 |> MyApp.Repo.all()
 
 # Count events by name
-from(e in PhxAnalytics.Event,
+from(e in Lyt.Event,
   group_by: e.name,
   select: {e.name, count(e.id)}
 )
 |> MyApp.Repo.all()
 
 # Get page views with session info
-from(e in PhxAnalytics.Event,
-  join: s in PhxAnalytics.Session, on: e.session_id == s.id,
+from(e in Lyt.Event,
+  join: s in Lyt.Session, on: e.session_id == s.id,
   where: e.name == "Page View",
   select: %{path: e.path, browser: s.browser, utm_source: s.utm_source}
 )
@@ -321,7 +321,7 @@ from(e in PhxAnalytics.Event,
 
 ### Session Tracking
 
-1. When a request comes in, `PhxAnalytics.Plug` checks for an existing session cookie
+1. When a request comes in, `Lyt.Plug` checks for an existing session cookie
 2. If no session exists, a new one is created with:
    - A cryptographically secure 64-character ID
    - Parsed user-agent information (browser, OS)
@@ -330,7 +330,7 @@ from(e in PhxAnalytics.Event,
 
 ### Event Tracking
 
-1. For regular requests, `PhxAnalytics.Plug` records a "Page View" event
+1. For regular requests, `Lyt.Plug` records a "Page View" event
 2. For LiveView:
    - Mount events create a "Live View" event
    - Navigation (handle_params) creates events when the path changes

@@ -1,6 +1,6 @@
-defmodule PhxAnalytics.Test.TestLiveBeforeSave do
+defmodule Lyt.Test.TestLiveBeforeSave do
   use Phoenix.LiveView
-  use PhxAnalytics, track_all: true, before_save: &__MODULE__.module_before_save/3
+  use Lyt, track_all: true, before_save: &__MODULE__.module_before_save/3
 
   @impl true
   def mount(_params, _session, socket) do

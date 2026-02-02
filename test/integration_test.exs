@@ -1,5 +1,5 @@
-defmodule PhxAnalytics.IntegrationTest do
-  use PhxAnalytics.IntegrationCase
+defmodule Lyt.IntegrationTest do
+  use Lyt.IntegrationCase
 
   describe "Plug integration" do
     test "creates session on regular page request", %{conn: conn} do
@@ -24,12 +24,12 @@ defmodule PhxAnalytics.IntegrationTest do
       assert [session] = all_sessions()
 
       # Get the session cookie
-      session_cookie = conn.cookies["phx_analytics_session"]
+      session_cookie = conn.cookies["lyt_session"]
 
       # Second request with same session cookie
       conn2 =
         build_conn()
-        |> put_req_cookie("phx_analytics_session", session_cookie)
+        |> put_req_cookie("lyt_session", session_cookie)
         |> get("/plug-test")
 
       assert html_response(conn2, 200)

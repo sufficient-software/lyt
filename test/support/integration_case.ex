@@ -1,4 +1,4 @@
-defmodule PhxAnalytics.IntegrationCase do
+defmodule Lyt.IntegrationCase do
   @moduledoc """
   This module defines the test case to be used by integration tests
   that require a full Phoenix/LiveView stack.
@@ -6,7 +6,7 @@ defmodule PhxAnalytics.IntegrationCase do
   ## Usage
 
       defmodule MyIntegrationTest do
-        use PhxAnalytics.IntegrationCase
+        use Lyt.IntegrationCase
 
         test "tracks page views", %{conn: conn} do
           {:ok, view, _html} = live(conn, "/live-test")
@@ -35,11 +35,11 @@ defmodule PhxAnalytics.IntegrationCase do
       import Plug.Conn
       import Phoenix.ConnTest
       import Phoenix.LiveViewTest
-      import PhxAnalytics.IntegrationCase
+      import Lyt.IntegrationCase
 
-      alias PhxAnalytics.{Session, Event, Repo}
+      alias Lyt.{Session, Event, Repo}
 
-      @endpoint PhxAnalytics.Test.Endpoint
+      @endpoint Lyt.Test.Endpoint
     end
   end
 
@@ -58,7 +58,7 @@ defmodule PhxAnalytics.IntegrationCase do
   """
   def all_sessions do
     import Ecto.Query
-    repo().all(from(s in PhxAnalytics.Session, order_by: [asc: s.inserted_at]))
+    repo().all(from(s in Lyt.Session, order_by: [asc: s.inserted_at]))
   end
 
   @doc """
@@ -66,7 +66,7 @@ defmodule PhxAnalytics.IntegrationCase do
   """
   def all_events do
     import Ecto.Query
-    repo().all(from(e in PhxAnalytics.Event, order_by: [asc: e.inserted_at]))
+    repo().all(from(e in Lyt.Event, order_by: [asc: e.inserted_at]))
   end
 
   @doc """
@@ -76,7 +76,7 @@ defmodule PhxAnalytics.IntegrationCase do
     import Ecto.Query
 
     repo().all(
-      from(e in PhxAnalytics.Event,
+      from(e in Lyt.Event,
         where: e.session_id == ^session_id,
         order_by: [asc: e.inserted_at]
       )
@@ -87,33 +87,33 @@ defmodule PhxAnalytics.IntegrationCase do
   Clears all analytics data (sessions and events).
   """
   def clear_analytics do
-    repo().delete_all(PhxAnalytics.Event)
-    repo().delete_all(PhxAnalytics.Session)
+    repo().delete_all(Lyt.Event)
+    repo().delete_all(Lyt.Session)
   end
 
   @doc """
   Returns the count of sessions.
   """
   def session_count do
-    repo().aggregate(PhxAnalytics.Session, :count)
+    repo().aggregate(Lyt.Session, :count)
   end
 
   @doc """
   Returns the count of events.
   """
   def event_count do
-    repo().aggregate(PhxAnalytics.Event, :count)
+    repo().aggregate(Lyt.Event, :count)
   end
 
   defp repo do
-    Application.fetch_env!(:phx_analytics, :repo)
+    Application.fetch_env!(:lyt, :repo)
   end
 
   defp ensure_telemetry_attached do
     handlers = :telemetry.list_handlers([:phoenix, :live_view, :mount, :stop])
 
-    unless Enum.any?(handlers, fn %{id: id} -> id == "phx_analytics" end) do
-      PhxAnalytics.attach()
+    unless Enum.any?(handlers, fn %{id: id} -> id == "lyt" end) do
+      Lyt.attach()
     end
   end
 end

@@ -1,6 +1,6 @@
-defmodule PhxAnalytics.Test.TestLiveTrackAll do
+defmodule Lyt.Test.TestLiveTrackAll do
   use Phoenix.LiveView
-  use PhxAnalytics, track_all: true, exclude: ["excluded_event", "heartbeat"]
+  use Lyt, track_all: true, exclude: ["excluded_event", "heartbeat"]
 
   @impl true
   def mount(_params, _session, socket) do

@@ -1,8 +1,8 @@
-defmodule PhxAnalytics do
+defmodule Lyt do
   @moduledoc """
   Highly customizable analytics for Phoenix LiveView applications.
 
-  PhxAnalytics provides automatic tracking of page views and custom events in Phoenix
+  Lyt provides automatic tracking of page views and custom events in Phoenix
   LiveView applications. It captures session data including browser information, UTM
   parameters, and custom metadata.
 
@@ -17,13 +17,13 @@ defmodule PhxAnalytics do
 
   ## Quick Start
 
-  1. Add PhxAnalytics to your supervision tree:
+  1. Add Lyt to your supervision tree:
 
       ```elixir
       # In your application.ex
       children = [
         MyApp.Repo,
-        PhxAnalytics.Telemetry,
+        Lyt.Telemetry,
         # ... other children
       ]
       ```
@@ -35,7 +35,7 @@ defmodule PhxAnalytics do
       pipeline :browser do
         plug :accepts, ["html"]
         plug :fetch_session
-        plug PhxAnalytics.Plug
+        plug Lyt.Plug
         # ... other plugs
       end
       ```
@@ -44,7 +44,7 @@ defmodule PhxAnalytics do
 
       ```elixir
       # In config/config.exs
-      config :phx_analytics, :repo, MyApp.Repo
+      config :lyt, :repo, MyApp.Repo
       ```
 
   4. Run migrations:
@@ -52,11 +52,11 @@ defmodule PhxAnalytics do
       ```elixir
       # In a migration file
       def up do
-        PhxAnalytics.Migration.up()
+        Lyt.Migration.up()
       end
 
       def down do
-        PhxAnalytics.Migration.down()
+        Lyt.Migration.down()
       end
       ```
 
@@ -66,7 +66,7 @@ defmodule PhxAnalytics do
 
       defmodule MyAppWeb.DashboardLive do
         use MyAppWeb, :live_view
-        use PhxAnalytics
+        use Lyt
 
         @analytics true
         def handle_event("submit_form", params, socket) do
@@ -77,28 +77,28 @@ defmodule PhxAnalytics do
 
   You can also configure module-level tracking options:
 
-      use PhxAnalytics, track_all: true, exclude: ["ping", "heartbeat"]
+      use Lyt, track_all: true, exclude: ["ping", "heartbeat"]
 
   See `__using__/1` for all available options.
   """
 
-  alias PhxAnalytics.{Session, Event, Repo, EventQueue}
+  alias Lyt.{Session, Event, Repo, EventQueue}
 
   @doc """
   Attach telemetry handlers manually.
 
-  This is called automatically when using `PhxAnalytics.Telemetry` in your
+  This is called automatically when using `Lyt.Telemetry` in your
   supervision tree. You only need to call this directly if you're not using
   the Telemetry supervisor.
 
   ## Example
 
-      PhxAnalytics.attach()
+      Lyt.attach()
 
   """
   def attach(_opts \\ []) do
     :telemetry.attach_many(
-      <<"phx_analytics">>,
+      <<"lyt">>,
       [
         [:phoenix, :live_view, :mount, :stop],
         [:phoenix, :live_view, :handle_params, :stop],
@@ -113,7 +113,7 @@ defmodule PhxAnalytics do
   Queue a session for async insertion.
   Returns a Session struct with the generated ID immediately (before DB insert).
 
-  In sync mode (configured with `config :phx_analytics, sync_mode: true`), this
+  In sync mode (configured with `config :lyt, sync_mode: true`), this
   will insert synchronously instead of queueing. Useful for testing.
   """
   def queue_session(attrs \\ %{}) do
@@ -151,7 +151,7 @@ defmodule PhxAnalytics do
   @doc """
   Queue an event for async insertion.
 
-  In sync mode (configured with `config :phx_analytics, sync_mode: true`), this
+  In sync mode (configured with `config :lyt, sync_mode: true`), this
   will insert synchronously instead of queueing. Useful for testing.
   """
   def queue_event(attrs) do
@@ -181,7 +181,7 @@ defmodule PhxAnalytics do
   end
 
   defp sync_mode? do
-    Application.get_env(:phx_analytics, :sync_mode, false)
+    Application.get_env(:lyt, :sync_mode, false)
   end
 
   defp atomize_keys(map) when is_map(map) do
@@ -211,11 +211,11 @@ defmodule PhxAnalytics do
   ## Examples
 
       # Full user agent parsing
-      PhxAnalytics.parse_user_agent("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)...")
+      Lyt.parse_user_agent("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)...")
       # => %{browser: "Safari", browser_version: "...", operating_system: "Mac", ...}
 
       # Bot detection
-      PhxAnalytics.parse_user_agent("Googlebot/2.1 (+http://www.google.com/bot.html)")
+      Lyt.parse_user_agent("Googlebot/2.1 (+http://www.google.com/bot.html)")
       # => %{browser: "Googlebot"}
 
   """
@@ -250,7 +250,7 @@ defmodule PhxAnalytics do
 
   ## Examples
 
-      iex> PhxAnalytics.parse_utm(%{"utm_source" => "google", "utm_medium" => "cpc"})
+      iex> Lyt.parse_utm(%{"utm_source" => "google", "utm_medium" => "cpc"})
       %{
         utm_source: "google",
         utm_medium: "cpc",
@@ -277,7 +277,7 @@ defmodule PhxAnalytics do
 
   ## Examples
 
-      iex> id = PhxAnalytics.generate_session_id()
+      iex> id = Lyt.generate_session_id()
       iex> String.length(id)
       64
 
@@ -287,7 +287,7 @@ defmodule PhxAnalytics do
   end
 
   @doc """
-  Use PhxAnalytics in a LiveView module to enable event tracking.
+  Use Lyt in a LiveView module to enable event tracking.
 
   ## Options
 
@@ -303,16 +303,16 @@ defmodule PhxAnalytics do
   ## Examples
 
       # Track specific events without @analytics decorator
-      use PhxAnalytics, include: ["submit_form", "click_button"]
+      use Lyt, include: ["submit_form", "click_button"]
 
       # Track all events except these
-      use PhxAnalytics, track_all: true, exclude: ["ping", "heartbeat"]
+      use Lyt, track_all: true, exclude: ["ping", "heartbeat"]
 
       # Track all events
-      use PhxAnalytics, track_all: true
+      use Lyt, track_all: true
 
       # Add a before_save callback at the module level
-      use PhxAnalytics, before_save: &__MODULE__.filter_analytics/3
+      use Lyt, before_save: &__MODULE__.filter_analytics/3
 
       def filter_analytics(changeset, _opts, socket) do
         if socket.assigns.user.admin? do
@@ -324,17 +324,17 @@ defmodule PhxAnalytics do
   """
   defmacro __using__(opts) do
     quote do
-      Module.register_attribute(__MODULE__, :_phx_analytics_tracked_functions, accumulate: true)
-      Module.put_attribute(__MODULE__, :_phx_analytics_opts, unquote(opts))
-      @before_compile PhxAnalytics
-      @on_definition {PhxAnalytics, :__on_definition__}
-      require PhxAnalytics
+      Module.register_attribute(__MODULE__, :_lyt_tracked_functions, accumulate: true)
+      Module.put_attribute(__MODULE__, :_lyt_opts, unquote(opts))
+      @before_compile Lyt
+      @on_definition {Lyt, :__on_definition__}
+      require Lyt
     end
   end
 
   defmacro __before_compile__(env) do
-    tracked_event_handlers = Module.get_attribute(env.module, :_phx_analytics_tracked_functions)
-    opts = Module.get_attribute(env.module, :_phx_analytics_opts) || []
+    tracked_event_handlers = Module.get_attribute(env.module, :_lyt_tracked_functions)
+    opts = Module.get_attribute(env.module, :_lyt_opts) || []
 
     track_all = Keyword.get(opts, :track_all, false)
     include_list = Keyword.get(opts, :include, [])
@@ -342,11 +342,11 @@ defmodule PhxAnalytics do
     before_save = Keyword.get(opts, :before_save)
 
     quote do
-      def phx_analytics_tracked_event_handlers do
+      def lyt_tracked_event_handlers do
         unquote(Macro.escape(tracked_event_handlers))
       end
 
-      def phx_analytics_tracking_opts do
+      def lyt_tracking_opts do
         %{
           track_all: unquote(track_all),
           include: unquote(include_list),
@@ -386,7 +386,7 @@ defmodule PhxAnalytics do
           {name, nil, opts}
       end
 
-    Module.put_attribute(env.module, :_phx_analytics_tracked_functions, tracked_info)
+    Module.put_attribute(env.module, :_lyt_tracked_functions, tracked_info)
     Module.delete_attribute(env.module, :analytics)
   end
 
@@ -399,8 +399,8 @@ defmodule PhxAnalytics do
 
     session_id = get_in(metadata, [:session, session_cookie_name()])
 
-    Process.put(:phx_analytics_uri, uri)
-    Process.put(:phx_analytics_session_id, session_id)
+    Process.put(:lyt_uri, uri)
+    Process.put(:lyt_session_id, session_id)
 
     # Only record on connected mount, not static render, to avoid duplicate events.
     # Check socket.transport_pid - it's nil during static render, set during live mount.
@@ -429,11 +429,11 @@ defmodule PhxAnalytics do
       |> get_in([:uri])
       |> URI.parse()
 
-    previous_uri = Process.get(:phx_analytics_uri)
-    session_id = Process.get(:phx_analytics_session_id)
+    previous_uri = Process.get(:lyt_uri)
+    session_id = Process.get(:lyt_session_id)
 
     # Update stored URI for future comparisons
-    Process.put(:phx_analytics_uri, uri)
+    Process.put(:lyt_uri, uri)
 
     # Only create event if path changed (not on initial mount, which already creates an event)
     path_changed = previous_uri && previous_uri.path != uri.path
@@ -452,7 +452,7 @@ defmodule PhxAnalytics do
 
   @doc false
   def handle_event([:phoenix, :live_view, :handle_event, _], _measurement, metadata, _config) do
-    uri = Process.get(:phx_analytics_uri)
+    uri = Process.get(:lyt_uri)
 
     if uri && !path_excluded?(uri.path) do
       view = metadata.socket.view
@@ -460,7 +460,7 @@ defmodule PhxAnalytics do
 
       case event_tracked?(view, event_name) do
         {true, opts, module_opts} ->
-          session_id = Process.get(:phx_analytics_session_id)
+          session_id = Process.get(:lyt_session_id)
 
           # Use custom name if provided, otherwise use the event name
           name = Map.get(opts, :name, event_name)
@@ -536,15 +536,15 @@ defmodule PhxAnalytics do
   defp event_tracked?(view, event_name) do
     # Get tracking options from the module
     module_opts =
-      if function_exported?(view, :phx_analytics_tracking_opts, 0) do
-        view.phx_analytics_tracking_opts()
+      if function_exported?(view, :lyt_tracking_opts, 0) do
+        view.lyt_tracking_opts()
       else
         %{track_all: false, include: [], exclude: [], before_save: nil}
       end
 
     tracked_handlers =
-      if function_exported?(view, :phx_analytics_tracked_event_handlers, 0) do
-        view.phx_analytics_tracked_event_handlers()
+      if function_exported?(view, :lyt_tracked_event_handlers, 0) do
+        view.lyt_tracked_event_handlers()
       else
         []
       end
@@ -581,7 +581,7 @@ defmodule PhxAnalytics do
   defp path_excluded?(nil), do: false
 
   defp path_excluded?(path) do
-    excluded_paths = Application.get_env(:phx_analytics, :excluded_paths, [])
+    excluded_paths = Application.get_env(:lyt, :excluded_paths, [])
 
     Enum.any?(excluded_paths, fn excluded ->
       String.starts_with?(path, excluded)
@@ -589,6 +589,6 @@ defmodule PhxAnalytics do
   end
 
   defp session_cookie_name do
-    Application.get_env(:phx_analytics, :session_cookie_name, "phx_analytics_session")
+    Application.get_env(:lyt, :session_cookie_name, "lyt_session")
   end
 end

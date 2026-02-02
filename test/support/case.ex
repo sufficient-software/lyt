@@ -1,10 +1,10 @@
-defmodule PhxAnalytics.Test.Case do
+defmodule Lyt.Test.Case do
   use ExUnit.CaseTemplate
 
   using do
     quote do
       import Ecto.Query
-      import PhxAnalytics.Test.Case
+      import Lyt.Test.Case
     end
   end
 
@@ -19,7 +19,7 @@ defmodule PhxAnalytics.Test.Case do
   end
 
   defp repo do
-    Application.get_env(:phx_analytics, :repo)
+    Application.get_env(:lyt, :repo)
   end
 
   def with_binary_module(binary, fun) do

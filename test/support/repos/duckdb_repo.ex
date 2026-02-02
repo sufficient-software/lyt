@@ -1,5 +1,5 @@
-defmodule PhxAnalytics.Test.DuckDBRepo do
+defmodule Lyt.Test.DuckDBRepo do
   use Ecto.Repo,
-    otp_app: :phx_analytics,
+    otp_app: :lyt,
     adapter: Ecto.Adapters.DuckDB
 end

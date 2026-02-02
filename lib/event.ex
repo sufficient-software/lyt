@@ -1,4 +1,4 @@
-defmodule PhxAnalytics.Event do
+defmodule Lyt.Event do
   @moduledoc """
   Ecto schema representing an analytics event.
 
@@ -17,9 +17,9 @@ defmodule PhxAnalytics.Event do
 
   ## Built-in Event Types
 
-  PhxAnalytics automatically creates these events:
+  Lyt automatically creates these events:
 
-    * `"Page View"` - Created by `PhxAnalytics.Plug` for non-LiveView requests
+    * `"Page View"` - Created by `Lyt.Plug` for non-LiveView requests
     * `"Live View"` - Created on LiveView mount and navigation
 
   ## Custom Events
@@ -35,13 +35,13 @@ defmodule PhxAnalytics.Event do
   use Ecto.Schema
   import Ecto.Changeset
 
-  schema "phx_analytics_events" do
+  schema "lyt_events" do
     field(:name, :string)
     field(:path, :string)
     field(:metadata, :map)
     field(:hostname, :string)
     field(:query, :string)
-    belongs_to(:session, PhxAnalytics.Session, type: :string)
+    belongs_to(:session, Lyt.Session, type: :string)
 
     timestamps(type: :utc_datetime)
   end

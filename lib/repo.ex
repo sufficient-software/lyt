@@ -1,6 +1,6 @@
-defmodule PhxAnalytics.Repo do
+defmodule Lyt.Repo do
   @moduledoc """
-  Repository abstraction layer for PhxAnalytics.
+  Repository abstraction layer for Lyt.
 
   This module delegates Ecto operations to the application's configured repository.
   It also provides adapter detection for database-specific operations.
@@ -9,7 +9,7 @@ defmodule PhxAnalytics.Repo do
 
   Configure the repository in your application config:
 
-      config :phx_analytics, :repo, MyApp.Repo
+      config :lyt, :repo, MyApp.Repo
 
   ## Supported Adapters
 
@@ -22,7 +22,7 @@ defmodule PhxAnalytics.Repo do
 
   Use `with_adapter/1` to run adapter-specific code:
 
-      PhxAnalytics.Repo.with_adapter(fn
+      Lyt.Repo.with_adapter(fn
         :postgres -> # PostgreSQL-specific code
         :mysql -> # MySQL-specific code
         :sqlite3 -> # SQLite3-specific code
@@ -63,7 +63,7 @@ defmodule PhxAnalytics.Repo do
 
   ## Examples
 
-      PhxAnalytics.Repo.with_adapter(fn
+      Lyt.Repo.with_adapter(fn
         :postgres -> "PostgreSQL"
         :mysql -> "MySQL"
         :sqlite3 -> "SQLite3"
@@ -85,6 +85,6 @@ defmodule PhxAnalytics.Repo do
   end
 
   defp repo() do
-    Application.fetch_env!(:phx_analytics, :repo)
+    Application.fetch_env!(:lyt, :repo)
   end
 end

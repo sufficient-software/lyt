@@ -1,6 +1,6 @@
-defmodule PhxAnalytics.Test.TestLiveInclude do
+defmodule Lyt.Test.TestLiveInclude do
   use Phoenix.LiveView
-  use PhxAnalytics, include: ["included_event", "another_included"]
+  use Lyt, include: ["included_event", "another_included"]
 
   @impl true
   def mount(_params, _session, socket) do

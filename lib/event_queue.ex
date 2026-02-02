@@ -1,4 +1,4 @@
-defmodule PhxAnalytics.EventQueue do
+defmodule Lyt.EventQueue do
   @moduledoc """
   A GenServer that queues analytics sessions and events for async database insertion.
 
@@ -8,21 +8,21 @@ defmodule PhxAnalytics.EventQueue do
   ## Usage
 
       # Queue a session (must be done before queueing events for that session)
-      PhxAnalytics.EventQueue.queue_session(%{id: "abc123", hostname: "example.com", ...})
+      Lyt.EventQueue.queue_session(%{id: "abc123", hostname: "example.com", ...})
 
       # Queue an event (will wait for session to be inserted first)
-      PhxAnalytics.EventQueue.queue_event(%{session_id: "abc123", name: "Page View", ...})
+      Lyt.EventQueue.queue_event(%{session_id: "abc123", name: "Page View", ...})
 
   ## Configuration
 
-      config :phx_analytics, PhxAnalytics.EventQueue,
+      config :lyt, Lyt.EventQueue,
         flush_interval: 100,  # ms between flush attempts
         batch_size: 50        # max items to process per flush
   """
 
   use GenServer
 
-  alias PhxAnalytics.{Session, Event, Repo}
+  alias Lyt.{Session, Event, Repo}
 
   @default_flush_interval 100
   @default_batch_size 50
@@ -282,12 +282,12 @@ defmodule PhxAnalytics.EventQueue do
 
   defp flush_interval(opts \\ []) do
     Keyword.get(opts, :flush_interval) ||
-      Application.get_env(:phx_analytics, __MODULE__, [])[:flush_interval] ||
+      Application.get_env(:lyt, __MODULE__, [])[:flush_interval] ||
       @default_flush_interval
   end
 
   defp batch_size do
-    Application.get_env(:phx_analytics, __MODULE__, [])[:batch_size] ||
+    Application.get_env(:lyt, __MODULE__, [])[:batch_size] ||
       @default_batch_size
   end
 end

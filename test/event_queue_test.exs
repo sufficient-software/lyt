@@ -1,20 +1,20 @@
-defmodule PhxAnalytics.EventQueueTest do
+defmodule Lyt.EventQueueTest do
   use ExUnit.Case, async: false
 
   import Ecto.Query
 
-  alias PhxAnalytics.{EventQueue, Session, Event, Repo}
+  alias Lyt.{EventQueue, Session, Event, Repo}
 
   # These tests need to run without sync_mode to actually test the queue
   # We start a fresh EventQueue for each test with sandbox access
 
   setup do
     # Temporarily disable sync_mode for these tests
-    original_sync_mode = Application.get_env(:phx_analytics, :sync_mode, false)
-    Application.put_env(:phx_analytics, :sync_mode, false)
+    original_sync_mode = Application.get_env(:lyt, :sync_mode, false)
+    Application.put_env(:lyt, :sync_mode, false)
 
     # Setup sandbox
-    repo = Application.fetch_env!(:phx_analytics, :repo)
+    repo = Application.fetch_env!(:lyt, :repo)
     pid = Ecto.Adapters.SQL.Sandbox.start_owner!(repo, shared: true)
 
     # Start a fresh EventQueue with a unique name for this test
@@ -26,7 +26,7 @@ defmodule PhxAnalytics.EventQueueTest do
 
     on_exit(fn ->
       # Restore original sync_mode
-      Application.put_env(:phx_analytics, :sync_mode, original_sync_mode)
+      Application.put_env(:lyt, :sync_mode, original_sync_mode)
       Ecto.Adapters.SQL.Sandbox.stop_owner(pid)
     end)
 
@@ -345,6 +345,6 @@ defmodule PhxAnalytics.EventQueueTest do
 
   # Helper to generate unique session IDs
   defp generate_id do
-    PhxAnalytics.generate_session_id()
+    Lyt.generate_session_id()
   end
 end

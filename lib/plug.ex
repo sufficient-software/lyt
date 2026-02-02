@@ -1,4 +1,4 @@
-defmodule PhxAnalytics.Plug do
+defmodule Lyt.Plug do
   @moduledoc """
   Plug middleware for session management and page view tracking.
 
@@ -18,7 +18,7 @@ defmodule PhxAnalytics.Plug do
         plug :accepts, ["html"]
         plug :fetch_session
         plug :fetch_live_flash
-        plug PhxAnalytics.Plug
+        plug Lyt.Plug
         plug :put_root_layout, html: {MyAppWeb.Layouts, :root}
         plug :protect_from_forgery
         plug :put_secure_browser_headers
@@ -32,17 +32,17 @@ defmodule PhxAnalytics.Plug do
 
   ## Example with Options
 
-      plug PhxAnalytics.Plug, event_name: "HTTP Request"
+      plug Lyt.Plug, event_name: "HTTP Request"
 
   ## Configuration
 
   The following application config options affect this plug:
 
-      # Session cookie name (default: "phx_analytics_session")
-      config :phx_analytics, :session_cookie_name, "my_session"
+      # Session cookie name (default: "lyt_session")
+      config :lyt, :session_cookie_name, "my_session"
 
       # Session length in seconds (default: 300)
-      config :phx_analytics, :session_length, 600
+      config :lyt, :session_length, 600
   """
 
   import Plug.Conn
@@ -55,16 +55,16 @@ defmodule PhxAnalytics.Plug do
 
     conn
     |> put_session(session_cookie_name(), session.id)
-    |> put_private(:phx_analytics_session, session)
-    |> put_private(:phx_analytics_opts, opts)
+    |> put_private(:lyt_session, session)
+    |> put_private(:lyt_opts, opts)
     |> register_before_send(&maybe_record_page_view/1)
   end
 
   defp session_cookie_name() do
-    Application.get_env(:phx_analytics, :session_cookie_name, "phx_analytics_session")
+    Application.get_env(:lyt, :session_cookie_name, "lyt_session")
   end
 
-  def session_max_length(), do: Application.get_env(:phx_analytics, :session_length, 300)
+  def session_max_length(), do: Application.get_env(:lyt, :session_length, 300)
 
   defp req_header_or_nil(conn, name) do
     case get_req_header(conn, name) do
@@ -109,7 +109,7 @@ defmodule PhxAnalytics.Plug do
   end
 
   defp get_or_create_session(conn, session_id) do
-    case PhxAnalytics.Repo.get(PhxAnalytics.Session, session_id) do
+    case Lyt.Repo.get(Lyt.Session, session_id) do
       nil ->
         get_or_create_session(conn, nil)
 
@@ -122,16 +122,16 @@ defmodule PhxAnalytics.Plug do
 
   defp queue_session(conn) do
     %{
-      id: PhxAnalytics.generate_session_id(),
+      id: Lyt.generate_session_id(),
       user_id: conn.assigns[:exa_id],
       hostname: conn.host,
       referrer: req_header_or_nil(conn, "referrer"),
       started_at: DateTime.utc_now(),
       entry: conn.request_path
     }
-    |> Map.merge(PhxAnalytics.parse_user_agent(req_header_or_nil(conn, "user-agent")))
-    |> Map.merge(PhxAnalytics.parse_utm(conn.params))
-    |> PhxAnalytics.queue_session()
+    |> Map.merge(Lyt.parse_user_agent(req_header_or_nil(conn, "user-agent")))
+    |> Map.merge(Lyt.parse_utm(conn.params))
+    |> Lyt.queue_session()
   end
 
   defp queue_session_update(conn, existing_session) do
@@ -144,18 +144,18 @@ defmodule PhxAnalytics.Plug do
       started_at: existing_session.started_at,
       entry: existing_session.entry
     }
-    |> Map.merge(PhxAnalytics.parse_user_agent(req_header_or_nil(conn, "user-agent")))
-    |> Map.merge(PhxAnalytics.parse_utm(conn.params))
-    |> PhxAnalytics.queue_session()
+    |> Map.merge(Lyt.parse_user_agent(req_header_or_nil(conn, "user-agent")))
+    |> Map.merge(Lyt.parse_utm(conn.params))
+    |> Lyt.queue_session()
   end
 
   defp record_page_view(conn) do
-    case conn.private[:phx_analytics_session] do
+    case conn.private[:lyt_session] do
       nil ->
         :ok
 
       session ->
-        opts = conn.private[:phx_analytics_opts] || []
+        opts = conn.private[:lyt_opts] || []
         event_name = Keyword.get(opts, :event_name, "Page View")
 
         %{
@@ -165,7 +165,7 @@ defmodule PhxAnalytics.Plug do
           path: conn.request_path,
           query: conn.query_string
         }
-        |> PhxAnalytics.queue_event()
+        |> Lyt.queue_event()
     end
   end
 end

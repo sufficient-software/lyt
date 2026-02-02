@@ -1,12 +1,12 @@
-defmodule PhxAnalytics.MixProject do
+defmodule Lyt.MixProject do
   use Mix.Project
 
   @version "0.1.0"
-  @source_url "https://github.com/sufficient/phx_analytics"
+  @source_url "https://github.com/sufficient/lyt"
 
   def project do
     [
-      app: :phx_analytics,
+      app: :lyt,
       version: @version,
       elixir: "~> 1.17",
       start_permanent: Mix.env() == :prod,
@@ -15,7 +15,7 @@ defmodule PhxAnalytics.MixProject do
       docs: docs(),
 
       # Hex.pm metadata
-      name: "PhxAnalytics",
+      name: "Lyt",
       description: "Highly customizable analytics for Phoenix LiveView applications",
       package: package(),
       source_url: @source_url,
@@ -73,18 +73,18 @@ defmodule PhxAnalytics.MixProject do
       ],
       groups_for_modules: [
         Core: [
-          PhxAnalytics,
-          PhxAnalytics.Telemetry,
-          PhxAnalytics.Plug
+          Lyt,
+          Lyt.Telemetry,
+          Lyt.Plug
         ],
         Schemas: [
-          PhxAnalytics.Session,
-          PhxAnalytics.Event
+          Lyt.Session,
+          Lyt.Event
         ],
         Infrastructure: [
-          PhxAnalytics.Repo,
-          PhxAnalytics.EventQueue,
-          PhxAnalytics.Migration
+          Lyt.Repo,
+          Lyt.EventQueue,
+          Lyt.Migration
         ]
       ]
     ]

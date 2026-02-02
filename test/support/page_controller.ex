@@ -1,4 +1,4 @@
-defmodule PhxAnalytics.Test.PageController do
+defmodule Lyt.Test.PageController do
   use Phoenix.Controller, formats: [:html]
 
   def index(conn, _params) do

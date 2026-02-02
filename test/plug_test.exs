@@ -1,12 +1,12 @@
-defmodule PhxAnalyticsTest.PlugTest do
-  use PhxAnalytics.Test.Case, async: true
+defmodule LytTest.PlugTest do
+  use Lyt.Test.Case, async: true
   import Plug.Test
   import Plug.Conn
 
-  alias PhxAnalytics.{Session, Event, Repo}
+  alias Lyt.{Session, Event, Repo}
 
-  @opts PhxAnalytics.Plug.init([])
-  @session_opts Plug.Session.init(store: :cookie, key: "_phx_analytics_key", signing_salt: "salt")
+  @opts Lyt.Plug.init([])
+  @session_opts Plug.Session.init(store: :cookie, key: "_lyt_key", signing_salt: "salt")
 
   defp configure_session(conn) do
     conn
@@ -25,11 +25,11 @@ defmodule PhxAnalyticsTest.PlugTest do
       )
       |> put_req_header("referrer", "http://example.com")
       |> configure_session()
-      |> PhxAnalytics.Plug.call(@opts)
+      |> Lyt.Plug.call(@opts)
       |> send_resp(200, "OK")
 
-    assert Map.has_key?(get_resp_cookies(conn), "phx_analytics_session")
-    assert get_session(conn, "phx_analytics_session")
+    assert Map.has_key?(get_resp_cookies(conn), "lyt_session")
+    assert get_session(conn, "lyt_session")
 
     session = Repo.one(Session)
     assert session
@@ -48,11 +48,11 @@ defmodule PhxAnalyticsTest.PlugTest do
   end
 
   test "uses custom event name if provided in opts" do
-    opts = PhxAnalytics.Plug.init(event_name: "Custom Event")
+    opts = Lyt.Plug.init(event_name: "Custom Event")
 
     conn(:get, "/custom_event_path")
     |> configure_session()
-    |> PhxAnalytics.Plug.call(opts)
+    |> Lyt.Plug.call(opts)
     |> send_resp(200, "OK")
 
     event = Repo.one(Event)
@@ -62,7 +62,7 @@ defmodule PhxAnalyticsTest.PlugTest do
   test "handles missing user-agent and referrer headers gracefully" do
     conn(:get, "/no_headers_path")
     |> configure_session()
-    |> PhxAnalytics.Plug.call(@opts)
+    |> Lyt.Plug.call(@opts)
     |> send_resp(200, "OK")
 
     session = Repo.one(Session)
@@ -79,7 +79,7 @@ defmodule PhxAnalyticsTest.PlugTest do
   test "creates a new session if no session cookie is present" do
     conn(:get, "/new_session_path")
     |> configure_session()
-    |> PhxAnalytics.Plug.call(@opts)
+    |> Lyt.Plug.call(@opts)
     |> send_resp(200, "OK")
 
     session = Repo.one(Session)
@@ -92,9 +92,9 @@ defmodule PhxAnalyticsTest.PlugTest do
       |> Repo.insert!()
 
     conn(:get, "/existing_session_path")
-    |> put_resp_cookie("phx_analytics_session", existing_session.id)
+    |> put_resp_cookie("lyt_session", existing_session.id)
     |> configure_session()
-    |> PhxAnalytics.Plug.call(@opts)
+    |> Lyt.Plug.call(@opts)
     |> send_resp(200, "OK")
 
     all_sessions = Repo.all(Session)

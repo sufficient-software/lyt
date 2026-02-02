@@ -1,27 +1,27 @@
-defmodule PhxAnalytics.Migration.DuckDB do
+defmodule Lyt.Migration.DuckDB do
   @moduledoc false
 
-  @behaviour PhxAnalytics.Migration
+  @behaviour Lyt.Migration
 
   use Ecto.Migration
-  alias PhxAnalytics.Migration.Migrator
+  alias Lyt.Migration.Migrator
 
   @initial_version 1
   @current_version 1
 
-  @impl PhxAnalytics.Migration
+  @impl Lyt.Migration
   def up(opts) do
     opts = with_defaults(opts, @current_version)
     Migrator.migrate_up(__MODULE__, opts, @initial_version)
   end
 
-  @impl PhxAnalytics.Migration
+  @impl Lyt.Migration
   def down(opts) do
     opts = with_defaults(opts, @initial_version)
     Migrator.migrate_down(__MODULE__, opts, @initial_version)
   end
 
-  @impl PhxAnalytics.Migration
+  @impl Lyt.Migration
   def current_version(opts) do
     opts = with_defaults(opts, @initial_version)
     Migrator.current_version(opts)

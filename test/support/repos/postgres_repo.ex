@@ -1,5 +1,5 @@
-defmodule PhxAnalytics.Test.PostgresRepo do
+defmodule Lyt.Test.PostgresRepo do
   use Ecto.Repo,
-    otp_app: :phx_analytics,
+    otp_app: :lyt,
     adapter: Ecto.Adapters.Postgres
 end

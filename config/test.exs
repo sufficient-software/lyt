@@ -1,13 +1,13 @@
 import Config
 
-config :phx_analytics, PhxAnalytics.Test.Sqlite3Repo,
+config :lyt, Lyt.Test.Sqlite3Repo,
   database: "priv/repo/sqlite3/test.db",
   pool: Ecto.Adapters.SQL.Sandbox,
   priv: "priv/repo",
   log: false
 
-config :phx_analytics, ecto_repos: [PhxAnalytics.Test.Sqlite3Repo]
-config :phx_analytics, otp_app: :phx_analytics
+config :lyt, ecto_repos: [Lyt.Test.Sqlite3Repo]
+config :lyt, otp_app: :lyt
 
 # Disable logging in tests (only show errors for critical issues)
 config :logger, level: :none
@@ -16,4 +16,4 @@ config :logger, level: :none
 config :phoenix, :logger, false
 
 # Use synchronous mode for tests to avoid sandbox issues with the EventQueue GenServer
-config :phx_analytics, sync_mode: true
+config :lyt, sync_mode: true

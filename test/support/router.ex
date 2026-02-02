@@ -1,4 +1,4 @@
-defmodule PhxAnalytics.Test.Router do
+defmodule Lyt.Test.Router do
   use Phoenix.Router
 
   import Phoenix.LiveView.Router
@@ -13,10 +13,10 @@ defmodule PhxAnalytics.Test.Router do
   end
 
   pipeline :with_analytics do
-    plug(PhxAnalytics.Plug)
+    plug(Lyt.Plug)
   end
 
-  scope "/", PhxAnalytics.Test do
+  scope "/", Lyt.Test do
     pipe_through([:browser, :with_analytics])
 
     live("/live-test", TestLive)
@@ -28,7 +28,7 @@ defmodule PhxAnalytics.Test.Router do
   end
 
   # Routes without analytics for comparison
-  scope "/no-analytics", PhxAnalytics.Test do
+  scope "/no-analytics", Lyt.Test do
     pipe_through([:browser])
 
     live("/live-test", TestLive)

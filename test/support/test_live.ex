@@ -1,6 +1,6 @@
-defmodule PhxAnalytics.Test.TestLive do
+defmodule Lyt.Test.TestLive do
   use Phoenix.LiveView
-  use PhxAnalytics
+  use Lyt
 
   @impl true
   def mount(_params, _session, socket) do

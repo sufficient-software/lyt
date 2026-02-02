@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Initial release of PhxAnalytics
+- Initial release of Lyt
 - **Core Features**
   - Automatic LiveView mount and navigation tracking via telemetry
   - Page view tracking for non-LiveView requests via Plug
@@ -44,6 +44,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - PostgreSQL adapter support
   - MySQL adapter support
   - SQLite3 adapter support
+  - DuckDB adapter support
   - Automatic adapter detection
   - Internal migration versioning system
   

@@ -1,16 +1,16 @@
-defmodule PhxAnalyticsTest do
-  use PhxAnalytics.Test.Case
-  doctest PhxAnalytics
+defmodule LytTest do
+  use Lyt.Test.Case
+  doctest Lyt
 
   setup_all do
     # Telemetry is already attached in test_helper.exs
     :ok
   end
 
-  describe inspect(&PhxAnalytics.create_session/1) do
+  describe inspect(&Lyt.create_session/1) do
     test "create a new session" do
       session =
-        PhxAnalytics.create_session(%{
+        Lyt.create_session(%{
           hostname: "localhost",
           entry: "/"
         })
@@ -20,7 +20,7 @@ defmodule PhxAnalyticsTest do
 
     test "upserts session metadata" do
       session =
-        PhxAnalytics.create_session(%{
+        Lyt.create_session(%{
           hostname: "localhost",
           entry: "/"
         })
@@ -28,7 +28,7 @@ defmodule PhxAnalyticsTest do
       assert session.id != nil
 
       new_session =
-        PhxAnalytics.create_session(%{
+        Lyt.create_session(%{
           id: session.id,
           hostname: "localhost",
           entry: "/",
@@ -43,7 +43,7 @@ defmodule PhxAnalyticsTest do
 
     test "upsert doesn't override session entry data" do
       session =
-        PhxAnalytics.create_session(%{
+        Lyt.create_session(%{
           hostname: "localhost",
           entry: "/"
         })
@@ -51,7 +51,7 @@ defmodule PhxAnalyticsTest do
       assert session.id != nil
 
       new_session =
-        PhxAnalytics.create_session(%{
+        Lyt.create_session(%{
           id: session.id,
           hostname: "localhost",
           entry: "/path",
@@ -65,15 +65,15 @@ defmodule PhxAnalyticsTest do
     end
   end
 
-  describe inspect(&PhxAnalytics.create_event/1) do
+  describe inspect(&Lyt.create_event/1) do
     setup do
-      session = PhxAnalytics.create_session()
+      session = Lyt.create_session()
       %{session: session}
     end
 
     test "create a new event", %{session: session} do
       event =
-        PhxAnalytics.create_event(%{
+        Lyt.create_event(%{
           session_id: session.id,
           name: "page_view",
           path: "/home"
@@ -90,7 +90,7 @@ defmodule PhxAnalyticsTest do
       with_binary_module(
         """
         defmodule Test do
-          use PhxAnalytics
+          use Lyt
 
           @analytics true
           def handle_event("testing", _params, socket) do
@@ -99,7 +99,7 @@ defmodule PhxAnalyticsTest do
         end
         """,
         fn mod ->
-          assert mod.phx_analytics_tracked_event_handlers() == [
+          assert mod.lyt_tracked_event_handlers() == [
                    {:handle_event, "testing", %{}}
                  ]
         end
@@ -110,7 +110,7 @@ defmodule PhxAnalyticsTest do
       with_binary_module(
         """
         defmodule Test do
-          use PhxAnalytics
+          use Lyt
 
           def handle_event("testing", _params, socket) do
             {:noreply, socket}
@@ -118,7 +118,7 @@ defmodule PhxAnalyticsTest do
         end
         """,
         fn mod ->
-          assert mod.phx_analytics_tracked_event_handlers() == []
+          assert mod.lyt_tracked_event_handlers() == []
         end
       )
     end
@@ -127,7 +127,7 @@ defmodule PhxAnalyticsTest do
       with_binary_module(
         """
         defmodule Test do
-          use PhxAnalytics
+          use Lyt
 
           @analytics true
           def handle_event("testing", _params, socket) do
@@ -150,7 +150,7 @@ defmodule PhxAnalyticsTest do
         end
         """,
         fn mod ->
-          assert mod.phx_analytics_tracked_event_handlers() == [
+          assert mod.lyt_tracked_event_handlers() == [
                    {:handle_event, "testing4", %{}},
                    {:handle_event, "testing", %{}}
                  ]
@@ -162,7 +162,7 @@ defmodule PhxAnalyticsTest do
   describe "telemetry handler" do
     test "mount handler" do
       session =
-        PhxAnalytics.create_session(%{
+        Lyt.create_session(%{
           hostname: "http://example.com",
           entry: "/"
         })
@@ -172,19 +172,19 @@ defmodule PhxAnalyticsTest do
         %{},
         %{
           uri: "http://example.com",
-          session: %{"phx_analytics_session" => session.id},
+          session: %{"lyt_session" => session.id},
           socket: %{transport_pid: self()}
         }
       )
 
-      events = PhxAnalytics.Repo.all(PhxAnalytics.Event)
+      events = Lyt.Repo.all(Lyt.Event)
       assert length(events) == 1
       assert events |> hd |> Map.get(:session_id) == session.id
     end
 
     test "handle_params handler" do
       session =
-        PhxAnalytics.create_session(%{
+        Lyt.create_session(%{
           hostname: "http://example.com",
           entry: "/"
         })
@@ -192,7 +192,7 @@ defmodule PhxAnalyticsTest do
       with_binary_module(
         """
         defmodule Test do
-          use PhxAnalytics
+          use Lyt
 
           @analytics true
           def handle_event("testing", _params, socket) do
@@ -203,8 +203,8 @@ defmodule PhxAnalyticsTest do
         end
         """,
         fn mod ->
-          Process.put(:phx_analytics_session_id, session.id)
-          Process.put(:phx_analytics_uri, URI.parse("http://example.com"))
+          Process.put(:lyt_session_id, session.id)
+          Process.put(:lyt_uri, URI.parse("http://example.com"))
 
           :telemetry.execute(
             [:phoenix, :live_view, :handle_event, :stop],
@@ -214,11 +214,11 @@ defmodule PhxAnalyticsTest do
               event: "testing",
               socket: %{view: mod},
               params: %{},
-              session: %{"phx_analytics_session_id" => session.id}
+              session: %{"lyt_session_id" => session.id}
             }
           )
 
-          events = PhxAnalytics.Repo.all(PhxAnalytics.Event)
+          events = Lyt.Repo.all(Lyt.Event)
           assert length(events) == 1
           assert events |> hd |> Map.get(:session_id) == session.id
         end

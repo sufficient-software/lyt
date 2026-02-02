@@ -1,5 +1,5 @@
-defmodule PhxAnalytics.Test.Sqlite3Repo do
+defmodule Lyt.Test.Sqlite3Repo do
   use Ecto.Repo,
-    otp_app: :phx_analytics,
+    otp_app: :lyt,
     adapter: Ecto.Adapters.SQLite3
 end

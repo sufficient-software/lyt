@@ -1,9 +1,9 @@
-defmodule PhxAnalytics.Test.Endpoint do
-  use Phoenix.Endpoint, otp_app: :phx_analytics
+defmodule Lyt.Test.Endpoint do
+  use Phoenix.Endpoint, otp_app: :lyt
 
   @session_options [
     store: :cookie,
-    key: "_phx_analytics_test_key",
+    key: "_lyt_test_key",
     signing_salt: "test_signing_salt",
     same_site: "Lax"
   ]
@@ -20,5 +20,5 @@ defmodule PhxAnalytics.Test.Endpoint do
   )
 
   plug(Plug.Session, @session_options)
-  plug(PhxAnalytics.Test.Router)
+  plug(Lyt.Test.Router)
 end

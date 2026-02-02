@@ -1,6 +1,6 @@
-defmodule PhxAnalytics.Migration do
+defmodule Lyt.Migration do
   @moduledoc """
-  Database migration management for PhxAnalytics.
+  Database migration management for Lyt.
 
   This module handles creating and managing the analytics database tables.
   It automatically detects your database adapter and runs the appropriate
@@ -14,11 +14,11 @@ defmodule PhxAnalytics.Migration do
         use Ecto.Migration
 
         def up do
-          PhxAnalytics.Migration.up()
+          Lyt.Migration.up()
         end
 
         def down do
-          PhxAnalytics.Migration.down()
+          Lyt.Migration.down()
         end
       end
 
@@ -30,9 +30,9 @@ defmodule PhxAnalytics.Migration do
 
   The migration creates three tables:
 
-    * `phx_analytics_meta` - Stores migration version information
-    * `phx_analytics_sessions` - Stores session records
-    * `phx_analytics_events` - Stores event records (with FK to sessions)
+    * `lyt_meta` - Stores migration version information
+    * `lyt_sessions` - Stores session records
+    * `lyt_events` - Stores event records (with FK to sessions)
 
   ## Multi-Database Support
 
@@ -45,7 +45,7 @@ defmodule PhxAnalytics.Migration do
 
   ## Versioning
 
-  PhxAnalytics uses internal versioning to track applied migrations.
+  Lyt uses internal versioning to track applied migrations.
   Use `migrated_version/1` to check the current migration version.
   """
 
@@ -63,8 +63,8 @@ defmodule PhxAnalytics.Migration do
 
   ## Example
 
-      PhxAnalytics.Migration.up()
-      PhxAnalytics.Migration.up(prefix: "analytics")
+      Lyt.Migration.up()
+      Lyt.Migration.up(prefix: "analytics")
 
   """
   def up(opts \\ []) do
@@ -81,7 +81,7 @@ defmodule PhxAnalytics.Migration do
 
   ## Example
 
-      PhxAnalytics.Migration.down()
+      Lyt.Migration.down()
 
   """
   def down(opts \\ []) do
@@ -95,7 +95,7 @@ defmodule PhxAnalytics.Migration do
 
   ## Example
 
-      PhxAnalytics.Migration.migrated_version()
+      Lyt.Migration.migrated_version()
       #=> 1
 
   """
@@ -104,11 +104,11 @@ defmodule PhxAnalytics.Migration do
   end
 
   defp migrator do
-    PhxAnalytics.Repo.with_adapter(fn
-      :postgres -> PhxAnalytics.Migration.Postgres
-      :mysql -> PhxAnalytics.Migration.MySQL
-      :sqlite3 -> PhxAnalytics.Migration.SQLite3
-      :duckdb -> PhxAnalytics.Migration.DuckDB
+    Lyt.Repo.with_adapter(fn
+      :postgres -> Lyt.Migration.Postgres
+      :mysql -> Lyt.Migration.MySQL
+      :sqlite3 -> Lyt.Migration.SQLite3
+      :duckdb -> Lyt.Migration.DuckDB
       adapter -> raise "Unknown adapter #{adapter}"
     end)
   end

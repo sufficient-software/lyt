@@ -1,4 +1,4 @@
-defmodule PhxAnalytics.Migration.Migrator do
+defmodule Lyt.Migration.Migrator do
   @moduledoc false
 
   use Ecto.Migration
@@ -32,7 +32,7 @@ defmodule PhxAnalytics.Migration.Migrator do
     repo = Map.get_lazy(opts, :repo, fn -> repo() end)
 
     query =
-      from(meta in "phx_analytics_meta",
+      from(meta in "lyt_meta",
         where: meta.key == "migration_version",
         select: meta.value
       )
@@ -64,26 +64,26 @@ defmodule PhxAnalytics.Migration.Migrator do
   defp record_version(opts, version) do
     timestamp = DateTime.utc_now() |> DateTime.to_unix()
 
-    PhxAnalytics.Repo.with_adapter(fn
+    Lyt.Repo.with_adapter(fn
       :postgres ->
         prefix = opts[:prefix]
 
         execute("""
-        INSERT INTO #{prefix}.phx_analytics_meta (key, value)
+        INSERT INTO #{prefix}.lyt_meta (key, value)
         VALUES ('migration_version', '#{version}'), ('migration_timestamp', '#{timestamp}')
         ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value
         """)
 
       :mysql ->
         execute("""
-        INSERT INTO phx_analytics_meta (`key`, value)
+        INSERT INTO lyt_meta (`key`, value)
         VALUES ('migration_version', '#{version}'), ('migration_timestamp', '#{timestamp}')
         ON DUPLICATE KEY UPDATE value = VALUES(value)
         """)
 
       _other ->
         execute("""
-        INSERT INTO phx_analytics_meta (key, value)
+        INSERT INTO lyt_meta (key, value)
         VALUES ('migration_version', '#{version}'), ('migration_timestamp', '#{timestamp}')
         ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value
         """)
@@ -91,11 +91,11 @@ defmodule PhxAnalytics.Migration.Migrator do
   end
 
   defp meta_table_exists?(repo, opts) do
-    PhxAnalytics.Repo.with_adapter(fn
+    Lyt.Repo.with_adapter(fn
       :postgres ->
         Ecto.Adapters.SQL.query!(
           repo,
-          "SELECT TRUE FROM information_schema.tables WHERE table_name = 'phx_analytics_meta' AND table_schema = $1",
+          "SELECT TRUE FROM information_schema.tables WHERE table_name = 'lyt_meta' AND table_schema = $1",
           [opts.prefix],
           log: false
         )
@@ -103,7 +103,7 @@ defmodule PhxAnalytics.Migration.Migrator do
         |> Enum.any?()
 
       _other ->
-        Ecto.Adapters.SQL.table_exists?(repo, "phx_analytics_meta", log: false)
+        Ecto.Adapters.SQL.table_exists?(repo, "lyt_meta", log: false)
     end)
   end
 end
