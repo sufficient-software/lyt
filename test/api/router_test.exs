@@ -1,5 +1,5 @@
 defmodule LytTest.API.RouterTest do
-  use Lyt.Test.Case, async: true
+  use Lyt.Test.Case, async: false
   import Plug.Test
   import Plug.Conn
 

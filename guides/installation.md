@@ -167,16 +167,46 @@ MyApp.Repo.all(Lyt.Event) |> length()
 
 You should see sessions and events being created as you browse your application.
 
-## Optional: JavaScript API
+## Optional: JavaScript Tracking
 
-If you need to track events from JavaScript (for SPAs, client-side interactions, or non-LiveView pages), add the API router:
+If you need to track events from JavaScript (for SPAs, client-side interactions, or non-LiveView pages), Lyt provides both a REST API and a JavaScript SDK.
+
+### Step 1: Add the API Router
 
 ```elixir
 # lib/my_app_web/router.ex
 forward "/api/analytics", Lyt.API.Router
 ```
 
-Then track events from JavaScript:
+### Step 2: Choose Your Integration Method
+
+#### Option A: JavaScript SDK (Recommended)
+
+The SDK handles automatic pageview tracking, SPA navigation, and batches events to reduce network requests.
+
+Copy the SDK to your static assets:
+
+```bash
+cp deps/lyt/priv/static/lyt.min.js priv/static/js/
+```
+
+Add to your layout (e.g., `root.html.heex`):
+
+```html
+<script defer data-api="/api/analytics" src={~p"/js/lyt.min.js"}></script>
+```
+
+Track custom events:
+
+```javascript
+// Events are queued and sent in batches every 1 second
+lyt('Button Click', { metadata: { button_id: 'signup' } })
+lyt('Form Submit', { metadata: { form: 'contact' } })
+```
+
+#### Option B: Direct API Calls
+
+For simple use cases or custom implementations:
 
 ```javascript
 fetch('/api/analytics/event', {
@@ -190,7 +220,9 @@ fetch('/api/analytics/event', {
 });
 ```
 
-Sessions are derived automatically from request data, so JavaScript can fire events immediately without waiting for session creation. See the README for full API documentation.
+Sessions are derived automatically from request data (user agent, IP, hostname), so JavaScript can fire events immediately without waiting for session creation.
+
+See the README for full JavaScript SDK and API documentation.
 
 ## Next Steps
 

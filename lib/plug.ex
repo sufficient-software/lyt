@@ -50,7 +50,9 @@ defmodule Lyt.Plug do
   def init(opts), do: opts
 
   def call(conn, opts) do
-    session_id = Map.get(conn.cookies, session_cookie_name())
+    # Derive session ID from request data (user agent, IP, hostname)
+    # This produces the same ID for the same client, matching the API behavior
+    session_id = Lyt.derive_session_id(conn)
     {conn, session} = get_or_create_session(conn, session_id)
 
     conn
@@ -96,36 +98,33 @@ defmodule Lyt.Plug do
     conn
   end
 
-  defp get_or_create_session(conn, nil) do
-    session = queue_session(conn)
-
-    conn =
-      put_resp_cookie(conn, session_cookie_name(), session.id,
-        max_age: session_max_length(),
-        same_site: "Lax"
-      )
-
-    {conn, session}
-  end
-
   defp get_or_create_session(conn, session_id) do
     case Lyt.Repo.get(Lyt.Session, session_id) do
       nil ->
-        get_or_create_session(conn, nil)
+        # Create new session with the derived ID
+        session = create_session(conn, session_id)
+
+        conn =
+          put_resp_cookie(conn, session_cookie_name(), session.id,
+            max_age: session_max_length(),
+            same_site: "Lax"
+          )
+
+        {conn, session}
 
       session ->
         # Re-queue the session to update it (upsert behavior)
-        queue_session_update(conn, session)
+        update_session(conn, session)
         {conn, session}
     end
   end
 
-  defp queue_session(conn) do
+  defp create_session(conn, session_id) do
     %{
-      id: Lyt.generate_session_id(),
+      id: session_id,
       user_id: conn.assigns[:exa_id],
       hostname: conn.host,
-      referrer: req_header_or_nil(conn, "referrer"),
+      referrer: req_header_or_nil(conn, "referer"),
       started_at: DateTime.utc_now(),
       entry: conn.request_path
     }
@@ -134,7 +133,7 @@ defmodule Lyt.Plug do
     |> Lyt.queue_session()
   end
 
-  defp queue_session_update(conn, existing_session) do
+  defp update_session(conn, existing_session) do
     # Queue an update for the existing session (will upsert)
     %{
       id: existing_session.id,

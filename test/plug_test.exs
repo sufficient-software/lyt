@@ -1,5 +1,5 @@
 defmodule LytTest.PlugTest do
-  use Lyt.Test.Case, async: true
+  use Lyt.Test.Case, async: false
   import Plug.Test
   import Plug.Conn
 
@@ -23,7 +23,7 @@ defmodule LytTest.PlugTest do
         "user-agent",
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"
       )
-      |> put_req_header("referrer", "http://example.com")
+      |> put_req_header("referer", "http://example.com")
       |> configure_session()
       |> Lyt.Plug.call(@opts)
       |> send_resp(200, "OK")
@@ -86,24 +86,49 @@ defmodule LytTest.PlugTest do
     assert session
   end
 
-  test "reuses existing session if session cookie is present" do
-    existing_session =
-      %Session{id: "existing_session_id"}
-      |> Repo.insert!()
+  test "reuses existing session for same client (same user-agent and IP)" do
+    # First request creates a session
+    conn(:get, "/first_path")
+    |> put_req_header("user-agent", "TestBrowser/1.0")
+    |> configure_session()
+    |> Lyt.Plug.call(@opts)
+    |> send_resp(200, "OK")
 
-    conn(:get, "/existing_session_path")
-    |> put_resp_cookie("lyt_session", existing_session.id)
+    session = Repo.one(Session)
+    assert session
+
+    # Second request with same user-agent and IP should reuse the session
+    conn(:get, "/second_path")
+    |> put_req_header("user-agent", "TestBrowser/1.0")
     |> configure_session()
     |> Lyt.Plug.call(@opts)
     |> send_resp(200, "OK")
 
     all_sessions = Repo.all(Session)
     assert length(all_sessions) == 1
-    assert existing_session.id == hd(all_sessions).id
+    assert session.id == hd(all_sessions).id
 
-    event = Repo.one(Event)
-    assert event
-    assert event.session_id == existing_session.id
-    assert event.path == "/existing_session_path"
+    events = Repo.all(Event)
+    assert length(events) == 2
+    assert Enum.all?(events, &(&1.session_id == session.id))
+  end
+
+  test "creates different sessions for different clients" do
+    # First request
+    conn(:get, "/path")
+    |> put_req_header("user-agent", "Browser/1.0")
+    |> configure_session()
+    |> Lyt.Plug.call(@opts)
+    |> send_resp(200, "OK")
+
+    # Second request with different user-agent
+    conn(:get, "/path")
+    |> put_req_header("user-agent", "DifferentBrowser/2.0")
+    |> configure_session()
+    |> Lyt.Plug.call(@opts)
+    |> send_resp(200, "OK")
+
+    all_sessions = Repo.all(Session)
+    assert length(all_sessions) == 2
   end
 end

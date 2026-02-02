@@ -279,7 +279,7 @@ defmodule Lyt.IntegrationTest do
     test "captures referrer", %{conn: conn} do
       conn =
         conn
-        |> put_req_header("referrer", "https://google.com/search?q=test")
+        |> put_req_header("referer", "https://google.com/search?q=test")
         |> get("/plug-test")
 
       assert html_response(conn, 200)

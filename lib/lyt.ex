@@ -111,18 +111,34 @@ defmodule Lyt do
 
   @doc """
   Queue a session for async insertion.
-  Returns a Session struct with the generated ID immediately (before DB insert).
+  Returns a Session struct with the ID immediately (before DB insert).
+
+  The `:id` field is required. Use `Lyt.derive_session_id/1` to generate
+  a deterministic ID from a Plug connection.
 
   In sync mode (configured with `config :lyt, sync_mode: true`), this
   will insert synchronously instead of queueing. Useful for testing.
+
+  ## Examples
+
+      # With a Plug connection (recommended)
+      session_id = Lyt.derive_session_id(conn)
+      Lyt.queue_session(%{id: session_id, hostname: conn.host, ...})
+
   """
-  def queue_session(attrs \\ %{}) do
+  def queue_session(attrs) do
+    unless attrs[:id] || attrs["id"] do
+      raise ArgumentError, """
+      Session ID is required. Use Lyt.derive_session_id(conn) to generate one:
+
+          session_id = Lyt.derive_session_id(conn)
+          Lyt.queue_session(%{id: session_id, ...})
+      """
+    end
+
     if sync_mode?() do
       create_session(attrs)
     else
-      # Generate ID if not provided
-      attrs = ensure_session_id(attrs)
-
       # Build the session struct to return immediately
       session = struct(Session, atomize_keys(attrs))
 
@@ -173,11 +189,6 @@ defmodule Lyt do
       {:ok, event} -> event
       {:error, _changeset} -> nil
     end
-  end
-
-  defp ensure_session_id(attrs) when is_map(attrs) do
-    id = attrs[:id] || attrs["id"] || generate_session_id()
-    Map.put(attrs, :id, id)
   end
 
   defp sync_mode? do
@@ -271,9 +282,11 @@ defmodule Lyt do
   end
 
   @doc """
-  Generate a cryptographically secure session ID.
+  Generate a cryptographically secure random session ID.
 
   Returns a 64-character lowercase hexadecimal string (32 random bytes).
+
+  Note: For deterministic session IDs based on request data, use `derive_session_id/1`.
 
   ## Examples
 
@@ -284,6 +297,63 @@ defmodule Lyt do
   """
   def generate_session_id() do
     :crypto.strong_rand_bytes(32) |> Base.encode16(case: :lower)
+  end
+
+  @doc """
+  Derive a deterministic session ID from a Plug connection.
+
+  The session ID is a SHA-256 hash of:
+  - A salt (configurable or derived from node name)
+  - User-Agent header
+  - Remote IP address
+  - Request hostname
+
+  This allows the same browser/IP/hostname combination to always produce
+  the same session ID, enabling JavaScript clients to fire events immediately
+  without waiting for session creation.
+
+  Returns a 64-character lowercase hex string.
+
+  ## Examples
+
+      session_id = Lyt.derive_session_id(conn)
+
+  ## Configuration
+
+      # Optional: Custom salt for session derivation
+      config :lyt, :session_salt, "your-secret-salt"
+
+  """
+  def derive_session_id(conn) do
+    salt = get_session_salt()
+
+    data =
+      [
+        Plug.Conn.get_req_header(conn, "user-agent") |> List.first() || "",
+        format_remote_ip(conn.remote_ip),
+        conn.host || ""
+      ]
+      |> Enum.join("|")
+
+    :crypto.hash(:sha256, salt <> data)
+    |> Base.encode16(case: :lower)
+  end
+
+  defp format_remote_ip(ip) when is_tuple(ip) do
+    ip |> :inet.ntoa() |> to_string()
+  end
+
+  defp format_remote_ip(ip) when is_binary(ip), do: ip
+  defp format_remote_ip(_), do: ""
+
+  defp get_session_salt do
+    Application.get_env(:lyt, :session_salt) || default_session_salt()
+  end
+
+  defp default_session_salt do
+    # Use a hash of the node name as a stable default salt
+    :crypto.hash(:sha256, "#{:erlang.node()}:lyt_session_salt")
+    |> Base.encode64()
   end
 
   @doc """
