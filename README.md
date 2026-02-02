@@ -537,6 +537,16 @@ config :lyt, :session_cookie_name, "my_analytics_session"
 # Session length in seconds (default: 300)
 config :lyt, :session_length, 600
 
+# Session cookie options (all optional)
+config :lyt, :session_cookie_opts,
+  same_site: "Strict",    # "Strict", "Lax", or "None" (default: "Lax")
+  secure: true,           # Require HTTPS (default: false)
+  http_only: true,        # Not accessible via JavaScript (default: true)
+  domain: ".example.com"  # Cookie domain (default: not set)
+
+# Custom salt for session ID derivation (recommended for production)
+config :lyt, :session_salt, "your-secret-random-salt"
+
 # Paths to exclude from tracking (default: [])
 config :lyt, :excluded_paths, ["/health", "/metrics", "/api"]
 
@@ -545,8 +555,9 @@ config :lyt, :sync_mode, false
 
 # Event queue configuration
 config :lyt, Lyt.EventQueue,
-  flush_interval: 100,  # ms between batch inserts
-  batch_size: 50        # max items per batch
+  flush_interval: 100,       # ms between batch inserts
+  batch_size: 50,            # max items per batch
+  max_session_cache: 10_000  # max inserted sessions to keep in memory
 ```
 
 ### Test Configuration
@@ -635,10 +646,37 @@ from(e in Lyt.Event,
 
 1. When a request comes in, `Lyt.Plug` checks for an existing session cookie
 2. If no session exists, a new one is created with:
-   - A cryptographically secure 64-character ID
+   - A deterministically derived 64-character ID
    - Parsed user-agent information (browser, OS)
    - UTM parameters from the query string
 3. The session ID is stored in a cookie and passed to LiveView via the session
+
+### Session ID Derivation
+
+Lyt uses deterministic session IDs derived from request data, which enables JavaScript clients to fire events immediately without waiting for session creation. The session ID is a SHA-256 hash of:
+
+- A configurable salt (defaults to a hash of the node name)
+- User-Agent header
+- Remote IP address
+- Request hostname
+
+**Security Considerations:**
+
+- **Salt configuration**: The default salt is derived from the node name. For production deployments, configure a custom salt:
+  ```elixir
+  config :lyt, :session_salt, "your-secret-random-salt"
+  ```
+
+- **User agent spoofing**: User agents can be easily spoofed by clients. This means a malicious actor could potentially generate the same session ID as another user if they know (or guess) the other inputs.
+
+- **Shared IP addresses**: Users behind NAT, VPNs, or corporate proxies may share IP addresses. Combined with similar user agents, this could result in session collisions.
+
+- **Privacy**: The session ID derivation does not include any personally identifiable information beyond what's already visible in server logs (IP, user agent).
+
+For use cases requiring stronger session isolation, consider:
+1. Setting a cryptographically random salt per deployment
+2. Adding additional entropy via custom session attributes
+3. Using the `user_id` field to associate sessions with authenticated users
 
 ### Event Tracking
 

@@ -137,7 +137,7 @@ defmodule Lyt do
     end
 
     if sync_mode?() do
-      create_session(attrs)
+      create_session!(attrs)
     else
       # Build the session struct to return immediately
       session = struct(Session, atomize_keys(attrs))
@@ -151,13 +151,40 @@ defmodule Lyt do
 
   @doc """
   Create a session synchronously. Use `queue_session/1` for async insertion.
+
+  Returns `{:ok, session}` on success, `{:error, changeset}` on failure.
+
+  ## Examples
+
+      {:ok, session} = Lyt.create_session(%{hostname: "example.com", entry: "/"})
+
   """
   def create_session(attrs \\ %{}) do
     %Session{}
     |> Session.changeset(attrs)
-    |> Repo.insert!(
+    |> Repo.insert(
       # without `returning: true`, it will optimistically return the data from the changeset
       # instead of the real values from the database
+      returning: true,
+      conflict_target: :id,
+      on_conflict: {:replace, Session.upsert_keys()}
+    )
+  end
+
+  @doc """
+  Create a session synchronously, raising on failure.
+
+  Returns the session struct on success, raises `Ecto.InvalidChangesetError` on failure.
+
+  ## Examples
+
+      session = Lyt.create_session!(%{hostname: "example.com", entry: "/"})
+
+  """
+  def create_session!(attrs \\ %{}) do
+    %Session{}
+    |> Session.changeset(attrs)
+    |> Repo.insert!(
       returning: true,
       conflict_target: :id,
       on_conflict: {:replace, Session.upsert_keys()}
@@ -172,7 +199,7 @@ defmodule Lyt do
   """
   def queue_event(attrs) do
     if sync_mode?() do
-      create_event(attrs)
+      create_event!(attrs)
     else
       EventQueue.queue_event(attrs)
     end
@@ -180,15 +207,42 @@ defmodule Lyt do
 
   @doc """
   Create an event synchronously. Use `queue_event/1` for async insertion.
+
+  Returns `{:ok, event}` on success, `{:error, changeset}` on failure.
+
+  ## Examples
+
+      {:ok, event} = Lyt.create_event(%{
+        session_id: session.id,
+        name: "Page View",
+        path: "/home"
+      })
+
   """
   def create_event(attrs) do
     %Event{}
     |> Event.changeset(attrs)
     |> Repo.insert()
-    |> case do
-      {:ok, event} -> event
-      {:error, _changeset} -> nil
-    end
+  end
+
+  @doc """
+  Create an event synchronously, raising on failure.
+
+  Returns the event struct on success, raises `Ecto.InvalidChangesetError` on failure.
+
+  ## Examples
+
+      event = Lyt.create_event!(%{
+        session_id: session.id,
+        name: "Page View",
+        path: "/home"
+      })
+
+  """
+  def create_event!(attrs) do
+    %Event{}
+    |> Event.changeset(attrs)
+    |> Repo.insert!()
   end
 
   defp sync_mode? do

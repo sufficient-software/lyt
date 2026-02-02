@@ -51,7 +51,7 @@ defmodule Lyt.Repo do
 
   defp delegate(action, arguments, opts) do
     repo = Keyword.get(opts, :repo, repo())
-    # TODO: handle deafult arguments if needed
+    # TODO: handle default arguments if needed
     apply(repo, action, arguments ++ [opts])
   end
 

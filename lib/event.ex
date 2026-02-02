@@ -49,11 +49,12 @@ defmodule Lyt.Event do
   @doc """
   Creates a changeset for an event.
 
-  The `:name` field is required. All other fields are optional.
+  The `:name` and `:session_id` fields are required. All other fields are optional.
   """
   def changeset(event, attrs) do
     event
     |> cast(attrs, [:session_id, :name, :hostname, :path, :query, :metadata])
-    |> validate_required([:name])
+    |> validate_required([:name, :session_id])
+    |> foreign_key_constraint(:session_id)
   end
 end

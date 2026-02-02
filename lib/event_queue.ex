@@ -17,7 +17,8 @@ defmodule Lyt.EventQueue do
 
       config :lyt, Lyt.EventQueue,
         flush_interval: 100,  # ms between flush attempts
-        batch_size: 50        # max items to process per flush
+        batch_size: 50,       # max items to process per flush
+        max_session_cache: 10_000  # max inserted sessions to keep in memory
   """
 
   use GenServer
@@ -26,11 +27,13 @@ defmodule Lyt.EventQueue do
 
   @default_flush_interval 100
   @default_batch_size 50
+  @default_max_session_cache 10_000
 
   defstruct sessions: %{},
             pending_sessions: :queue.new(),
             pending_events: :queue.new(),
             inserted_sessions: MapSet.new(),
+            session_insert_order: :queue.new(),
             flush_ref: nil
 
   # Client API
@@ -168,14 +171,56 @@ defmodule Lyt.EventQueue do
         n -> max(0, n - count)
       end
 
+    # Track insertion order for LRU eviction
+    new_insert_order =
+      Enum.reduce(inserted_ids, state.session_insert_order, &:queue.in(&1, &2))
+
+    new_inserted_sessions =
+      Enum.reduce(inserted_ids, state.inserted_sessions, &MapSet.put(&2, &1))
+
+    # Evict oldest sessions if cache is too large
+    {final_inserted_sessions, final_insert_order} =
+      trim_session_cache(new_inserted_sessions, new_insert_order)
+
     %{
       state
       | pending_sessions: remaining,
-        inserted_sessions:
-          Enum.reduce(inserted_ids, state.inserted_sessions, &MapSet.put(&2, &1)),
+        inserted_sessions: final_inserted_sessions,
+        session_insert_order: final_insert_order,
         sessions: Map.drop(state.sessions, inserted_ids)
     }
     |> maybe_continue_sessions(remaining_limit)
+  end
+
+  defp trim_session_cache(inserted_sessions, insert_order) do
+    max_size = max_session_cache()
+    current_size = MapSet.size(inserted_sessions)
+
+    if current_size > max_size do
+      # Remove oldest entries until we're at 90% of max to avoid constant trimming
+      target_size = trunc(max_size * 0.9)
+      to_remove = current_size - target_size
+
+      {updated_sessions, updated_order} =
+        Enum.reduce(1..to_remove, {inserted_sessions, insert_order}, fn _, {sessions, order} ->
+          case :queue.out(order) do
+            {{:value, session_id}, new_order} ->
+              {MapSet.delete(sessions, session_id), new_order}
+
+            {:empty, order} ->
+              {sessions, order}
+          end
+        end)
+
+      {updated_sessions, updated_order}
+    else
+      {inserted_sessions, insert_order}
+    end
+  end
+
+  defp max_session_cache do
+    Application.get_env(:lyt, __MODULE__, [])[:max_session_cache] ||
+      @default_max_session_cache
   end
 
   defp maybe_continue_sessions(state, :all) do

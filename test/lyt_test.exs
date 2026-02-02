@@ -9,7 +9,7 @@ defmodule LytTest do
 
   describe inspect(&Lyt.create_session/1) do
     test "create a new session" do
-      session =
+      {:ok, session} =
         Lyt.create_session(%{
           hostname: "localhost",
           entry: "/"
@@ -19,7 +19,7 @@ defmodule LytTest do
     end
 
     test "upserts session metadata" do
-      session =
+      {:ok, session} =
         Lyt.create_session(%{
           hostname: "localhost",
           entry: "/"
@@ -27,7 +27,7 @@ defmodule LytTest do
 
       assert session.id != nil
 
-      new_session =
+      {:ok, new_session} =
         Lyt.create_session(%{
           id: session.id,
           hostname: "localhost",
@@ -42,7 +42,7 @@ defmodule LytTest do
     end
 
     test "upsert doesn't override session entry data" do
-      session =
+      {:ok, session} =
         Lyt.create_session(%{
           hostname: "localhost",
           entry: "/"
@@ -50,7 +50,7 @@ defmodule LytTest do
 
       assert session.id != nil
 
-      new_session =
+      {:ok, new_session} =
         Lyt.create_session(%{
           id: session.id,
           hostname: "localhost",
@@ -67,12 +67,12 @@ defmodule LytTest do
 
   describe inspect(&Lyt.create_event/1) do
     setup do
-      session = Lyt.create_session()
+      {:ok, session} = Lyt.create_session()
       %{session: session}
     end
 
     test "create a new event", %{session: session} do
-      event =
+      {:ok, event} =
         Lyt.create_event(%{
           session_id: session.id,
           name: "page_view",
@@ -161,7 +161,7 @@ defmodule LytTest do
 
   describe "telemetry handler" do
     test "mount handler" do
-      session =
+      {:ok, session} =
         Lyt.create_session(%{
           hostname: "http://example.com",
           entry: "/"
@@ -183,7 +183,7 @@ defmodule LytTest do
     end
 
     test "handle_params handler" do
-      session =
+      {:ok, session} =
         Lyt.create_session(%{
           hostname: "http://example.com",
           entry: "/"

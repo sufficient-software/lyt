@@ -43,12 +43,15 @@ defmodule Lyt.Migration.Postgres.V01 do
       add(:query, :text)
       add(:metadata, :map)
 
-      add(:session_id, references(:lyt_sessions, type: :string, on_delete: :nothing), size: 64)
+      add(:session_id, references(:lyt_sessions, type: :string, on_delete: :delete_all), size: 64)
 
       timestamps(type: :utc_datetime)
     end
 
     create(index(:lyt_events, [:session_id], prefix: prefix))
+    create(index(:lyt_events, [:name], prefix: prefix))
+    create(index(:lyt_events, [:inserted_at], prefix: prefix))
+    create(index(:lyt_sessions, [:inserted_at], prefix: prefix))
   end
 
   def down(opts) do

@@ -40,12 +40,15 @@ defmodule Lyt.Migration.DuckDB.V01 do
       add(:query, :text)
       add(:metadata, :map)
 
-      add(:session_id, references(:lyt_sessions, type: :string, on_delete: :nothing), size: 64)
+      add(:session_id, references(:lyt_sessions, type: :string, on_delete: :delete_all), size: 64)
 
       timestamps(type: :utc_datetime)
     end
 
     create(index(:lyt_events, [:session_id]))
+    create(index(:lyt_events, [:name]))
+    create(index(:lyt_events, [:inserted_at]))
+    create(index(:lyt_sessions, [:inserted_at]))
   end
 
   def down(_opts) do

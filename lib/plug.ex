@@ -43,6 +43,13 @@ defmodule Lyt.Plug do
 
       # Session length in seconds (default: 300)
       config :lyt, :session_length, 600
+
+      # Cookie options (all optional)
+      config :lyt, :session_cookie_opts,
+        same_site: "Strict",  # "Strict", "Lax", or "None" (default: "Lax")
+        secure: true,         # Require HTTPS (default: false)
+        http_only: true,      # Not accessible via JavaScript (default: true)
+        domain: ".example.com"  # Cookie domain (default: not set)
   """
 
   import Plug.Conn
@@ -67,6 +74,19 @@ defmodule Lyt.Plug do
   end
 
   def session_max_length(), do: Application.get_env(:lyt, :session_length, 300)
+
+  defp session_cookie_opts() do
+    default_opts = [
+      same_site: "Lax",
+      http_only: true,
+      secure: false
+    ]
+
+    custom_opts = Application.get_env(:lyt, :session_cookie_opts, [])
+
+    Keyword.merge(default_opts, custom_opts)
+    |> Keyword.put(:max_age, session_max_length())
+  end
 
   defp req_header_or_nil(conn, name) do
     case get_req_header(conn, name) do
@@ -104,11 +124,7 @@ defmodule Lyt.Plug do
         # Create new session with the derived ID
         session = create_session(conn, session_id)
 
-        conn =
-          put_resp_cookie(conn, session_cookie_name(), session.id,
-            max_age: session_max_length(),
-            same_site: "Lax"
-          )
+        conn = put_resp_cookie(conn, session_cookie_name(), session.id, session_cookie_opts())
 
         {conn, session}
 
