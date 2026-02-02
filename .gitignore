@@ -26,3 +26,6 @@ phx_analytics-*.tar
 /tmp/
 
 /priv/repo/sqlite3/*.db*
+
+.elixir_ls/
+.expert/
