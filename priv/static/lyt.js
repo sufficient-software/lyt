@@ -465,7 +465,7 @@
   };
 
   // Version
-  lyt.version = "0.1.0";
+  lyt.version = "0.0.1";
 
   // Process any queued events from before script loaded
   var queue = window.lyt && window.lyt.q;
