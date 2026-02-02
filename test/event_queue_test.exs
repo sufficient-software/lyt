@@ -337,7 +337,7 @@ defmodule Lyt.EventQueueTest do
 
       EventQueue.flush(queue)
 
-      events = Repo.all(from(e in Event, order_by: [asc: e.inserted_at]))
+      events = Repo.all(from(e in Event, order_by: [asc: e.timestamp]))
       names = Enum.map(events, & &1.name)
       assert names == ["Event 1", "Event 2", "Event 3", "Event 4", "Event 5"]
     end

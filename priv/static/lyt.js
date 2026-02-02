@@ -10,6 +10,7 @@
  * Usage (manual):
  *   lyt('Page View', { path: '/home' })
  *   lyt('Button Click', { metadata: { button_id: 'signup' } })
+ *   lyt('Custom Event', { timestamp: '2024-01-15T10:30:00Z' })
  *
  * Configuration (data attributes on script tag):
  *   data-api        - API endpoint (default: "/api/analytics")
@@ -122,6 +123,7 @@
       path: options.path || location.pathname,
       hostname: options.hostname || location.hostname,
       query: options.query || location.search.substring(1),
+      timestamp: options.timestamp || new Date().toISOString(),
     };
 
     // Add metadata if provided
@@ -374,6 +376,7 @@
    *   lyt('Event Name')
    *   lyt('Event Name', { metadata: { key: 'value' } })
    *   lyt('Event Name', { path: '/custom-path' })
+   *   lyt('Event Name', { timestamp: '2024-01-15T10:30:00Z' })
    *   lyt('Event Name', { metadata: {...} }, callback)
    */
   function lyt(eventName, options, callback) {

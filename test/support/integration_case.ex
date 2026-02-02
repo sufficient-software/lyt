@@ -62,11 +62,11 @@ defmodule Lyt.IntegrationCase do
   end
 
   @doc """
-  Returns all analytics events ordered by insertion time.
+  Returns all analytics events ordered by timestamp.
   """
   def all_events do
     import Ecto.Query
-    repo().all(from(e in Lyt.Event, order_by: [asc: e.inserted_at]))
+    repo().all(from(e in Lyt.Event, order_by: [asc: e.timestamp]))
   end
 
   @doc """
@@ -78,7 +78,7 @@ defmodule Lyt.IntegrationCase do
     repo().all(
       from(e in Lyt.Event,
         where: e.session_id == ^session_id,
-        order_by: [asc: e.inserted_at]
+        order_by: [asc: e.timestamp]
       )
     )
   end

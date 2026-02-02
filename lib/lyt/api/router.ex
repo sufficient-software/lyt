@@ -25,22 +25,24 @@ defmodule Lyt.API.Router do
       {
         "name": "Button Click",
         "path": "/dashboard",
-        "metadata": {"button_id": "signup"}
+        "metadata": {"button_id": "signup"},
+        "timestamp": "2024-01-15T10:30:00Z"
       }
 
   ### Batch Events (`POST /events`)
 
       {
         "events": [
-          {"name": "Page View", "path": "/home"},
-          {"name": "Scroll Depth", "metadata": {"depth": 50}}
+          {"name": "Page View", "path": "/home", "timestamp": "2024-01-15T10:30:00Z"},
+          {"name": "Scroll Depth", "metadata": {"depth": 50}, "timestamp": "2024-01-15T10:30:05Z"}
         ]
       }
 
   ## Optional Fields
 
-  These can be included with any event to enrich session data:
+  These can be included with any event:
 
+    * `timestamp` - ISO 8601 datetime when the event occurred (defaults to server time)
     * `screen_width` - Screen width in pixels (captured on session creation)
     * `screen_height` - Screen height in pixels
     * `utm_source`, `utm_medium`, `utm_campaign`, `utm_term`, `utm_content` - UTM parameters
@@ -138,11 +140,23 @@ defmodule Lyt.API.Router do
       path: params["path"] || "/",
       query: params["query"],
       hostname: params["hostname"] || conn.host,
-      metadata: params["metadata"]
+      metadata: params["metadata"],
+      timestamp: parse_timestamp(params["timestamp"])
     }
 
     {:ok, Lyt.Event.changeset(%Lyt.Event{}, attrs)}
   end
+
+  defp parse_timestamp(nil), do: nil
+
+  defp parse_timestamp(timestamp) when is_binary(timestamp) do
+    case DateTime.from_iso8601(timestamp) do
+      {:ok, datetime, _offset} -> datetime
+      {:error, _} -> nil
+    end
+  end
+
+  defp parse_timestamp(_), do: nil
 
   defp queue_event(changeset) do
     if sync_mode?() do

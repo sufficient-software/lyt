@@ -7,7 +7,7 @@ defmodule Lyt.Migration.SQLite3 do
   alias Lyt.Migration.Migrator
 
   @initial_version 1
-  @current_version 1
+  @current_version 2
 
   @impl Lyt.Migration
   def up(opts) do

@@ -7,6 +7,7 @@ config :lyt, Lyt.Test.Sqlite3Repo,
   log: false
 
 config :lyt, ecto_repos: [Lyt.Test.Sqlite3Repo]
+config :lyt, :repo, Lyt.Test.Sqlite3Repo
 config :lyt, otp_app: :lyt
 
 # Disable logging in tests (only show errors for critical issues)
