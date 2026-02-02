@@ -362,6 +362,165 @@ scope "/api" do
 end
 ```
 
+## JavaScript SDK
+
+For a simpler integration, Lyt provides a JavaScript SDK that handles automatic pageview tracking, SPA navigation, and provides a clean API for custom events.
+
+Events are queued locally and sent in batches (default: every 1 second) to minimize network requests. The queue is automatically flushed when the user navigates away or the tab becomes hidden.
+
+### Installation
+
+Copy `priv/static/lyt.js` (or `lyt.min.js` for production) to your Phoenix static assets:
+
+```bash
+cp deps/lyt/priv/static/lyt.min.js priv/static/js/
+```
+
+Add to your layout:
+
+```html
+<script defer data-api="/api/analytics" src="/js/lyt.min.js"></script>
+```
+
+The SDK will automatically track pageviews, including SPA navigation.
+
+### Script Tag Options
+
+Configure via data attributes:
+
+| Attribute | Default | Description |
+|-----------|---------|-------------|
+| `data-api` | `/api/analytics` | API endpoint path |
+| `data-auto` | `true` | Auto-track pageviews |
+| `data-spa` | `true` | Track SPA navigation (history API) |
+| `data-hash` | `false` | Track hash-based routing |
+| `data-interval` | `1000` | Queue flush interval in ms |
+| `data-debug` | `false` | Enable console logging |
+
+Example with options:
+
+```html
+<script defer 
+        data-api="/api/analytics" 
+        data-hash="true"
+        data-debug="true"
+        src="/js/lyt.min.js"></script>
+```
+
+### Tracking Custom Events
+
+```javascript
+// Basic event
+lyt('Button Click')
+
+// Event with metadata
+lyt('Purchase', {
+  metadata: {
+    product_id: '123',
+    price: 29.99
+  }
+})
+
+// Event with custom path
+lyt('Virtual Page', { path: '/onboarding/step-2' })
+
+// Event with callback
+lyt('Form Submit', { metadata: { form: 'contact' } }, function(response) {
+  if (response.ok) {
+    console.log('Event tracked!')
+  }
+})
+```
+
+### Batch Events
+
+Send multiple events in one request:
+
+```javascript
+lyt.batch([
+  { name: 'Page View', path: '/checkout' },
+  { name: 'Cart Items', metadata: { count: 3 } },
+  { name: 'Total', metadata: { amount: 99.99 } }
+], function(response) {
+  console.log('Queued:', response.queued)
+})
+```
+
+### Manual Pageview Tracking
+
+If you disable auto-tracking (`data-auto="false"`), track pageviews manually:
+
+```javascript
+// Track current page
+lyt.pageview()
+
+// Track virtual page
+lyt.pageview({ path: '/virtual/page' })
+```
+
+### Runtime Configuration
+
+```javascript
+lyt.configure({
+  endpoint: '/custom/analytics',
+  debug: true,
+  autoPageview: false,
+  spaMode: true,
+  hashRouting: false,
+  flushInterval: 2000  // Flush every 2 seconds
+})
+```
+
+### Manual Queue Control
+
+```javascript
+// Flush the queue immediately (e.g., before a critical action)
+lyt.flush(function(response) {
+  console.log('Flushed:', response.queued, 'events')
+})
+
+// Check queue length
+console.log('Pending events:', lyt.queueLength())
+```
+
+### Privacy Controls
+
+```javascript
+// Opt out of tracking (persists to localStorage)
+lyt.optOut()
+
+// Opt back in
+lyt.optIn()
+```
+
+### Queue Pattern (Pre-initialization)
+
+Track events before the script loads:
+
+```html
+<script>
+  window.lyt = window.lyt || function() {
+    (lyt.q = lyt.q || []).push(arguments)
+  }
+  
+  // These will be sent once the SDK loads
+  lyt('Early Event')
+</script>
+<script defer src="/js/lyt.min.js"></script>
+```
+
+### Automatic Behaviors
+
+**Filtering** - The SDK automatically skips tracking for:
+- Local file protocol (`file://`)
+- Automated testing (Cypress, Phantom, Nightmare, WebDriver)
+- Users who called `lyt.optOut()`
+
+**Auto-flush** - The queue is automatically flushed:
+- Every 1 second (configurable via `data-interval`)
+- When the page is hidden (tab switch, minimize)
+- When the user navigates away (`pagehide` event)
+
 ## Configuration Options
 
 All configuration is optional. Here are the available options:
