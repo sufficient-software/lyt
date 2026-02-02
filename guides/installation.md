@@ -167,11 +167,37 @@ MyApp.Repo.all(Lyt.Event) |> length()
 
 You should see sessions and events being created as you browse your application.
 
+## Optional: JavaScript API
+
+If you need to track events from JavaScript (for SPAs, client-side interactions, or non-LiveView pages), add the API router:
+
+```elixir
+# lib/my_app_web/router.ex
+forward "/api/analytics", Lyt.API.Router
+```
+
+Then track events from JavaScript:
+
+```javascript
+fetch('/api/analytics/event', {
+  method: 'POST',
+  headers: {'Content-Type': 'application/json'},
+  body: JSON.stringify({
+    name: 'Button Click',
+    path: window.location.pathname,
+    metadata: {button_id: 'signup'}
+  })
+});
+```
+
+Sessions are derived automatically from request data, so JavaScript can fire events immediately without waiting for session creation. See the README for full API documentation.
+
 ## Next Steps
 
 Now that Lyt is installed, you can:
 
 - Track custom events in your LiveView modules using the `@analytics` decorator
+- Track client-side events using the JavaScript API
 - Configure tracking options like excluded paths and session length
 - Query your analytics data using Ecto to build dashboards
 

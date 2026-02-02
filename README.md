@@ -209,6 +209,159 @@ defp add_user_info(changeset, _opts, socket) do
 end
 ```
 
+## JavaScript API
+
+Lyt provides a REST API for tracking events from JavaScript. This is useful for:
+
+- Single-page applications that don't use LiveView
+- Tracking client-side interactions (scroll depth, time on page, etc.)
+- Mobile apps or external services
+
+### Setup
+
+Add the API router to your Phoenix router:
+
+```elixir
+# lib/my_app_web/router.ex
+forward "/api/analytics", Lyt.API.Router
+```
+
+That's it! No additional configuration required.
+
+### How It Works
+
+Sessions are derived automatically from request data (user agent, IP address, hostname), so JavaScript can fire events immediately without waiting for a session to be created. The same browser/IP combination will always map to the same session.
+
+### Tracking Events
+
+#### Single Event
+
+```javascript
+fetch('/api/analytics/event', {
+  method: 'POST',
+  headers: {'Content-Type': 'application/json'},
+  body: JSON.stringify({
+    name: 'Button Click',
+    path: '/dashboard',
+    metadata: {button_id: 'signup', variant: 'blue'}
+  })
+});
+```
+
+#### Batch Events
+
+Send multiple events in a single request (up to 100 by default):
+
+```javascript
+fetch('/api/analytics/events', {
+  method: 'POST',
+  headers: {'Content-Type': 'application/json'},
+  body: JSON.stringify({
+    events: [
+      {name: 'Page View', path: '/home'},
+      {name: 'Scroll Depth', metadata: {depth: 50}},
+      {name: 'Time on Page', metadata: {seconds: 30}}
+    ]
+  })
+});
+```
+
+### Request Fields
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `name` | Yes | Event name (e.g., "Button Click", "Page View") |
+| `path` | No | Page path (defaults to "/") |
+| `hostname` | No | Hostname (defaults to request host) |
+| `metadata` | No | Custom data object (max 10KB) |
+| `screen_width` | No | Screen width in pixels (captured on session) |
+| `screen_height` | No | Screen height in pixels (captured on session) |
+| `utm_source` | No | UTM source parameter |
+| `utm_medium` | No | UTM medium parameter |
+| `utm_campaign` | No | UTM campaign parameter |
+| `utm_term` | No | UTM term parameter |
+| `utm_content` | No | UTM content parameter |
+
+### Response Format
+
+Success:
+```json
+{"ok": true}
+```
+
+Success (batch):
+```json
+{"ok": true, "queued": 3}
+```
+
+Validation error:
+```json
+{
+  "ok": false,
+  "error": "validation_error",
+  "details": {"name": ["is required"]}
+}
+```
+
+### Example: Track Page Views and Interactions
+
+```javascript
+// Track initial page view with screen dimensions
+fetch('/api/analytics/event', {
+  method: 'POST',
+  headers: {'Content-Type': 'application/json'},
+  body: JSON.stringify({
+    name: 'Page View',
+    path: window.location.pathname,
+    screen_width: window.innerWidth,
+    screen_height: window.innerHeight
+  })
+});
+
+// Track button clicks
+document.querySelectorAll('[data-track]').forEach(el => {
+  el.addEventListener('click', () => {
+    fetch('/api/analytics/event', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        name: el.dataset.track,
+        path: window.location.pathname,
+        metadata: {element_id: el.id}
+      })
+    });
+  });
+});
+```
+
+### API Configuration
+
+```elixir
+# config/config.exs
+config :lyt, Lyt.API.Router,
+  max_batch_size: 100,        # Maximum events per batch request
+  max_metadata_size: 10_240,  # Maximum metadata size in bytes (10KB)
+  max_name_length: 255,       # Maximum event name length
+  before_save: &MyModule.filter/2  # Optional callback to filter events
+```
+
+### CORS
+
+The API router does not handle CORS. If you need cross-origin requests, configure CORS in your Phoenix pipeline or use a library like `cors_plug`:
+
+```elixir
+# lib/my_app_web/router.ex
+pipeline :api do
+  plug :accepts, ["json"]
+  plug CORSPlug, origin: ["https://myapp.com"]
+end
+
+scope "/api" do
+  pipe_through :api
+  forward "/analytics", Lyt.API.Router
+end
+```
+
 ## Configuration Options
 
 All configuration is optional. Here are the available options:
