@@ -2,7 +2,7 @@ defmodule Lyt.MixProject do
   use Mix.Project
 
   @version "0.0.1"
-  @source_url "https://github.com/sufficient/lyt"
+  @source_url "https://github.com/sufficient-software/lyt"
 
   def project do
     [
