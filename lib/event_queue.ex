@@ -29,6 +29,8 @@ defmodule Lyt.EventQueue do
   @default_batch_size 50
   @default_max_session_cache 10_000
 
+  @max_event_attempts 50
+
   defstruct sessions: %{},
             pending_sessions: :queue.new(),
             pending_events: :queue.new(),
@@ -223,7 +225,7 @@ defmodule Lyt.EventQueue do
       @default_max_session_cache
   end
 
-  defp maybe_continue_sessions(state, :all) do
+  defp maybe_continue_sessions(state, _limit) do
     if :queue.is_empty(state.pending_sessions) do
       state
     else
@@ -231,12 +233,14 @@ defmodule Lyt.EventQueue do
     end
   end
 
-  defp maybe_continue_sessions(state, 0), do: state
-  defp maybe_continue_sessions(state, remaining), do: flush_sessions(state, remaining)
-
   defp flush_events(state, limit) do
-    {to_process, remaining_queue} =
-      partition_ready_events(state.pending_events, state.inserted_sessions, limit)
+    {to_process, remaining_queue, updated_inserted_sessions, updated_insert_order} =
+      partition_ready_events(
+        state.pending_events,
+        state.inserted_sessions,
+        state.session_insert_order,
+        limit
+      )
 
     Enum.each(to_process, fn
       {:attrs, attrs} ->
@@ -244,47 +248,115 @@ defmodule Lyt.EventQueue do
 
       {:changeset, changeset} ->
         Repo.insert(changeset)
+
+      {:attrs, attrs, _attempts} ->
+        insert_event_attrs(attrs)
+
+      {:changeset, changeset, _attempts} ->
+        Repo.insert(changeset)
     end)
 
-    %{state | pending_events: remaining_queue}
+    %{
+      state
+      | pending_events: remaining_queue,
+        inserted_sessions: updated_inserted_sessions,
+        session_insert_order: updated_insert_order
+    }
   end
 
-  defp partition_ready_events(queue, inserted_sessions, limit) do
-    partition_ready_events(queue, inserted_sessions, limit, [], :queue.new())
+  defp partition_ready_events(queue, inserted_sessions, insert_order, limit) do
+    partition_ready_events(queue, inserted_sessions, insert_order, limit, [], :queue.new())
   end
 
-  defp partition_ready_events(queue, _inserted_sessions, 0, ready, not_ready) do
+  defp partition_ready_events(queue, inserted_sessions, insert_order, 0, ready, not_ready) do
     # Limit reached, put remaining back
     final_not_ready = :queue.join(not_ready, queue)
-    {Enum.reverse(ready), final_not_ready}
+    {Enum.reverse(ready), final_not_ready, inserted_sessions, insert_order}
   end
 
-  defp partition_ready_events(queue, inserted_sessions, limit, ready, not_ready) do
+  defp partition_ready_events(queue, inserted_sessions, insert_order, limit, ready, not_ready) do
     case :queue.out(queue) do
       {:empty, _} ->
-        {Enum.reverse(ready), not_ready}
+        {Enum.reverse(ready), not_ready, inserted_sessions, insert_order}
 
       {{:value, item}, rest} ->
         session_id = get_session_id(item)
+        attempts = get_attempts(item)
 
-        if MapSet.member?(inserted_sessions, session_id) do
-          new_limit = if limit == :all, do: :all, else: limit - 1
-          partition_ready_events(rest, inserted_sessions, new_limit, [item | ready], not_ready)
-        else
-          partition_ready_events(
-            rest,
-            inserted_sessions,
-            limit,
-            ready,
-            :queue.in(item, not_ready)
-          )
+        cond do
+          MapSet.member?(inserted_sessions, session_id) ->
+            new_limit = if limit == :all, do: :all, else: limit - 1
+
+            partition_ready_events(
+              rest,
+              inserted_sessions,
+              insert_order,
+              new_limit,
+              [item | ready],
+              not_ready
+            )
+
+          attempts >= @max_event_attempts ->
+            # Drop the event — session was never inserted after many attempts
+            require Logger
+
+            Logger.warning(
+              "Lyt.EventQueue: dropping event for session #{inspect(session_id)} after #{attempts} attempts"
+            )
+
+            partition_ready_events(rest, inserted_sessions, insert_order, limit, ready, not_ready)
+
+          true ->
+            # Check if session exists in the database (may have been evicted from cache)
+            case Repo.get(Session, session_id) do
+              nil ->
+                # Session not in DB yet, re-queue with incremented attempt count
+                bumped = bump_attempts(item)
+
+                partition_ready_events(
+                  rest,
+                  inserted_sessions,
+                  insert_order,
+                  limit,
+                  ready,
+                  :queue.in(bumped, not_ready)
+                )
+
+              _session ->
+                # Session exists in DB but was evicted from cache — re-add to cache and process
+                new_limit = if limit == :all, do: :all, else: limit - 1
+                updated_sessions = MapSet.put(inserted_sessions, session_id)
+                updated_order = :queue.in(session_id, insert_order)
+
+                partition_ready_events(
+                  rest,
+                  updated_sessions,
+                  updated_order,
+                  new_limit,
+                  [item | ready],
+                  not_ready
+                )
+            end
         end
     end
   end
 
+  defp get_attempts({:attrs, _attrs, attempts}), do: attempts
+  defp get_attempts({:changeset, _changeset, attempts}), do: attempts
+  defp get_attempts(_), do: 0
+
+  defp bump_attempts({:attrs, attrs, attempts}), do: {:attrs, attrs, attempts + 1}
+  defp bump_attempts({:changeset, changeset, attempts}), do: {:changeset, changeset, attempts + 1}
+  defp bump_attempts({:attrs, attrs}), do: {:attrs, attrs, 1}
+  defp bump_attempts({:changeset, changeset}), do: {:changeset, changeset, 1}
+
   defp get_session_id({:attrs, attrs}), do: attrs[:session_id] || attrs["session_id"]
+  defp get_session_id({:attrs, attrs, _attempts}), do: attrs[:session_id] || attrs["session_id"]
 
   defp get_session_id({:changeset, changeset}),
+    do: Ecto.Changeset.get_field(changeset, :session_id)
+
+  defp get_session_id({:changeset, changeset, _attempts}),
     do: Ecto.Changeset.get_field(changeset, :session_id)
 
   defp insert_session(attrs) do

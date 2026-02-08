@@ -343,6 +343,104 @@ defmodule Lyt.EventQueueTest do
     end
   end
 
+  describe "session cache eviction recovery" do
+    test "events are still processed when session is evicted from cache but exists in DB", %{
+      queue: queue
+    } do
+      session_id = generate_id()
+
+      # Insert session and flush so it's in the DB and cache
+      EventQueue.queue_session(%{id: session_id, hostname: "example.com"}, queue)
+      EventQueue.flush(queue)
+
+      # Confirm session is in DB
+      assert Repo.get(Session, session_id)
+
+      # Set max_session_cache very low to force eviction
+      original_config = Application.get_env(:lyt, Lyt.EventQueue, [])
+
+      Application.put_env(
+        :lyt,
+        Lyt.EventQueue,
+        Keyword.merge(original_config, max_session_cache: 1)
+      )
+
+      # Insert enough sessions to evict the original one from cache
+      for _ <- 1..3 do
+        id = generate_id()
+        EventQueue.queue_session(%{id: id, hostname: "example.com"}, queue)
+      end
+
+      EventQueue.flush(queue)
+
+      # Now the original session should be evicted from cache but still in DB
+      # Queue an event for it
+      EventQueue.queue_event(
+        %{session_id: session_id, name: "After Eviction", path: "/recovered"},
+        queue
+      )
+
+      EventQueue.flush(queue)
+
+      # Event should still be inserted because DB fallback kicks in
+      events = Repo.all(from(e in Event, where: e.session_id == ^session_id))
+      assert length(events) == 1
+      assert hd(events).name == "After Eviction"
+
+      # Restore config
+      Application.put_env(:lyt, Lyt.EventQueue, original_config)
+    end
+  end
+
+  describe "orphaned event cleanup" do
+    test "events are dropped after max attempts when session never appears", %{queue: queue} do
+      missing_session_id = generate_id()
+
+      EventQueue.queue_event(
+        %{session_id: missing_session_id, name: "Orphan", path: "/orphan"},
+        queue
+      )
+
+      # Flush many times to exceed max attempts (50)
+      for _ <- 1..51 do
+        EventQueue.flush(queue)
+      end
+
+      # Event should have been dropped
+      stats = EventQueue.stats(queue)
+      assert stats.pending_events == 0
+
+      # And nothing was inserted
+      events = Repo.all(Event)
+      assert events == []
+    end
+
+    test "attempt counter increments across flushes", %{queue: queue} do
+      missing_session_id = generate_id()
+
+      EventQueue.queue_event(
+        %{session_id: missing_session_id, name: "Orphan", path: "/orphan"},
+        queue
+      )
+
+      # Flush a few times - event should still be pending
+      for _ <- 1..5 do
+        EventQueue.flush(queue)
+      end
+
+      stats = EventQueue.stats(queue)
+      assert stats.pending_events == 1
+
+      # But after enough flushes it gets dropped
+      for _ <- 1..46 do
+        EventQueue.flush(queue)
+      end
+
+      stats = EventQueue.stats(queue)
+      assert stats.pending_events == 0
+    end
+  end
+
   # Helper to generate unique session IDs
   defp generate_id do
     Lyt.generate_session_id()
